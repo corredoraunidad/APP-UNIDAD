@@ -1,4 +1,4 @@
-import { supabase } from '../config/supabase';
+import { supabase, supabaseAdmin } from '../config/supabase';
 import { FileService } from './fileService';
 import { EmailService } from './emailService';
 import type { User, UserContract, CreateUserData, UpdateUserData, UserWithContract, UserFilters } from '../types';
@@ -417,13 +417,40 @@ export class UserService {
       }
 
       // Paso 3: Crear usuario en Supabase Auth
-      // Nota: La creación de usuarios de Auth debe hacerse desde el backend
-      // Por ahora, generamos un ID temporal para el perfil
-      const tempUserId = crypto.randomUUID();
+      if (!supabaseAdmin) {
+        return {
+          user: null,
+          credentials: null,
+          error: 'Configuración admin de Supabase no disponible'
+        };
+      }
+
+      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+        email: userData.email,
+        password: password,
+        email_confirm: true,
+        user_metadata: {
+          nombres: userData.nombres,
+          apellido_paterno: userData.apellido_paterno,
+          apellido_materno: userData.apellido_materno,
+          username: username,
+          rol: userData.rol,
+          temp_password: password,
+          first_login: true
+        }
+      });
+
+      if (authError || !authData.user) {
+        return {
+          user: null,
+          credentials: null,
+          error: authError?.message || 'Error creando usuario en sistema de autenticación'
+        };
+      }
 
       // Paso 4: Crear perfil en la tabla profiles
       const profileData = {
-        id: tempUserId,
+        id: authData.user.id,
         email: userData.email,
         nombres: userData.nombres,
         apellido_paterno: userData.apellido_paterno,
@@ -456,9 +483,9 @@ export class UserService {
         .single();
 
       if (profileError || !profile) {
-        // Rollback: Eliminar perfil si falla la creación
+        // Rollback: Eliminar usuario de auth si falla profiles
         try {
-          await supabase.from('profiles').delete().eq('id', tempUserId);
+          await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
         } catch (rollbackError) {
           // Manejar error de rollback silenciosamente
         }
@@ -480,16 +507,17 @@ export class UserService {
           userData.contractFile,
           userData.contractFile.type,
           userData.contractFile.size,
-          `/contratos/${tempUserId}`
+          `/contratos/${authData.user.id}`
         );
 
         if (uploadError || !fileData) {
-          // Rollback: Eliminar perfil si falla la subida del contrato
-          try {
-            await supabase.from('profiles').delete().eq('id', tempUserId);
-          } catch (rollbackError) {
-            // Manejar error de rollback silenciosamente
-          }
+                  // Rollback: Eliminar usuario si falla la subida del contrato
+        try {
+          await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
+          await supabase.from('profiles').delete().eq('id', authData.user.id);
+        } catch (rollbackError) {
+          // Manejar error de rollback silenciosamente
+        }
           
           return {
             user: null,
@@ -502,18 +530,19 @@ export class UserService {
 
         // Paso 6: Crear registro de contrato en BD
         const { contract: contractData, error: contractError } = await this.createContractRecord(
-          tempUserId,
+          authData.user.id,
           uploadedFile.id
         );
 
         if (contractError || !contractData) {
-          // Rollback: Eliminar perfil y archivo si falla el registro del contrato
-          try {
-            await supabase.from('profiles').delete().eq('id', tempUserId);
-            await FileService.deleteItem(uploadedFile.id);
-          } catch (rollbackError) {
-            // Manejar error de rollback silenciosamente
-          }
+                  // Rollback: Eliminar usuario y archivo si falla el registro del contrato
+        try {
+          await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
+          await supabase.from('profiles').delete().eq('id', authData.user.id);
+          await FileService.deleteItem(uploadedFile.id);
+        } catch (rollbackError) {
+          // Manejar error de rollback silenciosamente
+        }
           
           return {
             user: null,
@@ -705,8 +734,16 @@ export class UserService {
         };
       }
 
-      // Nota: La eliminación de usuarios de Auth debe hacerse desde el backend
-      // Por ahora, solo eliminamos el perfil de la base de datos
+      // Eliminar de Supabase Auth usando el cliente admin
+      if (supabaseAdmin) {
+        const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+        if (authError) {
+          return {
+            success: false,
+            error: `Error al eliminar usuario de Auth: ${authError.message}`
+          };
+        }
+      }
 
       // Eliminar de la tabla profiles
       const { error } = await supabase

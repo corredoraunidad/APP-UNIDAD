@@ -1,0 +1,217 @@
+/* Estilos personalizados para Quill */
+
+/* Asegurar que todos los menús de Quill aparezcan por encima */
+.ql-toolbar .ql-picker-options,
+.ql-toolbar .ql-color-picker .ql-picker-options,
+.ql-toolbar .ql-background .ql-picker-options,
+.ql-toolbar .ql-header .ql-picker-options {
+  z-index: 10000 !important;
+  position: absolute !important;
+  background: white !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 6px !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+}
+
+/* Contenedor principal */
+.ql-container {
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  position: relative;
+  z-index: 1;
+}
+
+/* Barra de herramientas */
+.ql-toolbar {
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  border-bottom: 1px solid #e5e7eb;
+  background-color: #f9fafb;
+  position: relative;
+  z-index: 10;
+}
+
+/* Área de edición */
+.ql-editor {
+  min-height: 200px;
+  padding: 12px 16px;
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+}
+
+/* Botones de la barra de herramientas */
+.ql-toolbar button {
+  color: #374151;
+}
+
+.ql-toolbar button:hover {
+  color: #fd8412;
+}
+
+.ql-toolbar button.ql-active {
+  color: #fd8412;
+}
+
+/* Separadores en la barra de herramientas */
+.ql-toolbar .ql-separator {
+  border-right: 1px solid #e5e7eb;
+  margin: 0 8px;
+}
+
+/* Enlaces */
+.ql-editor a {
+  color: #fd8412;
+  text-decoration: underline;
+}
+
+/* Código */
+.ql-editor code {
+  background-color: #f3f4f6;
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+}
+
+/* Bloques de código */
+.ql-editor pre.ql-syntax {
+  background-color: #1f2937;
+  color: #f9fafb;
+  padding: 12px;
+  border-radius: 6px;
+  font-family: 'Courier New', monospace;
+  margin: 8px 0;
+}
+
+/* Citas */
+.ql-editor blockquote {
+  border-left: 4px solid #fd8412;
+  padding-left: 16px;
+  margin: 8px 0;
+  color: #6b7280;
+}
+
+/* Listas */
+.ql-editor ul,
+.ql-editor ol {
+  padding-left: 20px;
+  margin: 8px 0;
+}
+
+/* Encabezados */
+.ql-editor h1,
+.ql-editor h2,
+.ql-editor h3 {
+  margin: 16px 0 8px 0;
+  font-weight: 600;
+}
+
+.ql-editor h1 {
+  font-size: 24px;
+}
+
+.ql-editor h2 {
+  font-size: 20px;
+}
+
+.ql-editor h3 {
+  font-size: 18px;
+}
+
+/* Placeholder */
+.ql-editor.ql-blank::before {
+  color: #9ca3af;
+  font-style: italic;
+}
+
+/* Focus states */
+.ql-container.ql-snow:focus-within {
+  border-color: #6b7280;
+  box-shadow: 0 0 0 2px rgba(107, 114, 128, 0.2);
+}
+
+/* Menús desplegables */
+.ql-toolbar .ql-picker {
+  position: relative;
+}
+
+.ql-toolbar .ql-picker-options {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 9999;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  min-width: 120px;
+}
+
+.ql-toolbar .ql-picker-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.ql-toolbar .ql-picker-item:hover {
+  background-color: #f9fafb;
+}
+
+.ql-toolbar .ql-picker-item:last-child {
+  border-bottom: none;
+}
+
+/* Asegurar que los menús aparezcan por encima */
+.ql-toolbar .ql-picker-options,
+.ql-toolbar .ql-color-picker .ql-picker-options,
+.ql-toolbar .ql-background .ql-picker-options {
+  z-index: 9999 !important;
+}
+
+/* Fix específico para el menú de headers */
+.ql-toolbar .ql-header .ql-picker-options {
+  z-index: 10000 !important;
+  position: absolute !important;
+  top: 100% !important;
+  left: 0 !important;
+  background: white !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 6px !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+  min-width: 120px !important;
+}
+
+
+
+/* Selectores de color */
+.ql-toolbar .ql-color-picker .ql-picker-options,
+.ql-toolbar .ql-background .ql-picker-options {
+  width: 152px;
+  padding: 8px;
+}
+
+.ql-toolbar .ql-color-picker .ql-picker-item,
+.ql-toolbar .ql-background .ql-picker-item {
+  width: 16px;
+  height: 16px;
+  border: 1px solid #e5e7eb;
+  margin: 2px;
+  display: inline-block;
+  cursor: pointer;
+}
+
+.ql-toolbar .ql-color-picker .ql-picker-item:hover,
+.ql-toolbar .ql-background .ql-picker-item:hover {
+  border-color: #fd8412;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .ql-toolbar {
+    padding: 8px;
+  }
+  
+  .ql-editor {
+    padding: 8px 12px;
+  }
+}

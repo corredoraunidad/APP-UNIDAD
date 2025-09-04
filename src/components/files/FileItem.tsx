@@ -1,0 +1,257 @@
+import React, { useEffect, useRef } from 'react';
+import { 
+  Folder, 
+  FileText, 
+  Image, 
+  FileSpreadsheet, 
+  Archive, 
+  File,
+  MoreVertical,
+  Eye,
+  Download,
+  Edit,
+  Trash2
+} from 'lucide-react';
+import { useThemeClasses } from '../../hooks/useThemeClasses';
+
+interface FileItemProps {
+  id: string;
+  name: string;
+  type: 'file' | 'folder';
+  size?: number;
+  extension?: string;
+  modified: Date;
+  itemCount?: number; // Para carpetas
+  mime_type?: string; // Para archivos
+  onOpen: (id: string) => void;
+  onDownload?: (id: string) => void;
+  onRename?: (id: string) => void;
+  onDelete?: (id: string) => void;
+  onPreview?: (id: string, name: string, mimeType: string, size: number) => void;
+  openMenuId: string | null;
+  setOpenMenuId: (id: string | null) => void;
+}
+
+const FileItem: React.FC<FileItemProps> = ({
+  id,
+  name,
+  type,
+  size,
+  extension,
+  modified,
+  itemCount,
+  mime_type,
+  onOpen,
+  onDownload,
+  onRename,
+  onDelete,
+  onPreview,
+  openMenuId,
+  setOpenMenuId
+}) => {
+  const { bgCard, text, textSecondary, textMuted, hoverBg, border } = useThemeClasses();
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Función para obtener el icono según el tipo
+  const getIcon = () => {
+    if (type === 'folder') {
+      return <Folder size={32} className="text-[#1e3a8a]" />;
+    }
+
+    switch (extension?.toLowerCase()) {
+      case 'pdf':
+        return <FileText size={32} className="text-red-500" />;
+      case 'xlsx':
+      case 'xls':
+        return <FileSpreadsheet size={32} className="text-green-600" />;
+      case 'docx':
+      case 'doc':
+        return <FileText size={32} className="text-blue-600" />;
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+      case 'gif':
+        return <Image size={32} className="text-purple-500" />;
+      case 'zip':
+      case 'rar':
+        return <Archive size={32} className="text-yellow-600" />;
+      default:
+        return <File size={32} className="text-gray-500" />;
+    }
+  };
+
+  // Formatear tamaño de archivo
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  // Formatear fecha
+  const formatDate = (date: Date) => {
+    const now = new Date();
+    const diffTime = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) {
+      return 'Hoy';
+    } else if (diffDays === 1) {
+      return 'Ayer';
+    } else if (diffDays < 7) {
+      return `Hace ${diffDays} días`;
+    } else {
+      return date.toLocaleDateString();
+    }
+  };
+
+  const handleMenuToggle = () => {
+    setOpenMenuId(openMenuId === id ? null : id);
+  };
+
+  const handleAction = (action: string) => {
+    setOpenMenuId(null);
+    
+    switch (action) {
+      case 'open':
+        onOpen(id);
+        break;
+      case 'preview':
+        if (type === 'file' && onPreview && mime_type && size) {
+          onPreview(id, name, mime_type, size);
+        }
+        break;
+      case 'download':
+        onDownload?.(id);
+        break;
+      case 'rename':
+        onRename?.(id);
+        break;
+      case 'delete':
+        onDelete?.(id);
+        break;
+    }
+  };
+
+  // useEffect para cerrar dropdown al hacer click fuera
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (openMenuId === id && menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setOpenMenuId(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [openMenuId, id, setOpenMenuId]);
+
+  return (
+    <div 
+      className={`${bgCard} rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 p-4 group cursor-pointer ${
+        openMenuId === id ? 'relative z-30' : ''
+      }`}
+      onClick={() => onOpen(id)}
+    >
+      <div className="flex items-center gap-4">
+        {/* Icono */}
+        <div className="flex-shrink-0">
+          {getIcon()}
+        </div>
+
+        {/* Información principal */}
+        <div className="flex-1 min-w-0">
+          {/* Nombre */}
+          <h3 className={`text-sm font-medium ${text} truncate mb-1`}>
+            {name}
+          </h3>
+          
+          {/* Información adicional */}
+          <div className={`flex items-center gap-4 text-xs ${textSecondary}`}>
+            {type === 'folder' ? (
+              <span>{itemCount} elementos</span>
+            ) : (
+              size && <span>{formatFileSize(size)}</span>
+            )}
+            <span>{formatDate(modified)}</span>
+          </div>
+        </div>
+
+        {/* Menú de acciones */}
+        <div className="relative flex-shrink-0" ref={menuRef}>
+          <button
+            onClick={(e) => {
+              e.stopPropagation(); // Evitar que se active el onClick del contenedor
+              handleMenuToggle();
+            }}
+            className={`p-2 rounded-full ${hoverBg} transition-colors opacity-0 group-hover:opacity-100`}
+          >
+            <MoreVertical size={16} className={textSecondary} />
+          </button>
+
+          {/* Dropdown Menu */}
+          {openMenuId === id && (
+            <div className={`absolute right-0 top-full mt-1 z-20 ${bgCard} rounded-xl shadow-lg border ${border} py-2 min-w-[140px]`}>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleAction('open');
+                  }}
+                  className={`w-full px-3 py-2 text-left text-sm ${text} ${hoverBg} flex items-center transition-colors`}
+                >
+                  <Eye size={14} className={`mr-2 ${textMuted}`} />
+                  {type === 'folder' ? 'Abrir' : 'Ver'}
+                </button>
+                
+                {type === 'file' && onDownload && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleAction('download');
+                    }}
+                    className={`w-full px-3 py-2 text-left text-sm ${text} ${hoverBg} flex items-center transition-colors`}
+                  >
+                    <Download size={14} className={`mr-2 ${textMuted}`} />
+                    Descargar
+                  </button>
+                )}
+                
+                {onRename && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleAction('rename');
+                    }}
+                    className={`w-full px-3 py-2 text-left text-sm ${text} ${hoverBg} flex items-center transition-colors`}
+                  >
+                    <Edit size={14} className={`mr-2 ${textMuted}`} />
+                    Renombrar
+                  </button>
+                )}
+                
+                {onDelete && (
+                  <>
+                    <div className={`h-px ${border} my-1 mx-2`}></div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAction('delete');
+                      }}
+                      className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center transition-colors"
+                    >
+                      <Trash2 size={14} className="mr-2 text-red-400" />
+                      Eliminar
+                    </button>
+                  </>
+                )}
+              </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default FileItem; 

@@ -1,0 +1,32 @@
+@import "tailwindcss";
+
+
+
+
+/* Normalizar viewport en diferentes navegadores */
+html {
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  margin: 0;
+  padding: 0;
+}
+
+/* Fix específico para Chrome - normalizar escalado */
+@media screen and (-webkit-min-device-pixel-ratio: 0) {
+  * {
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+  }
+}
+
+/* Asegurar que los modales y drawers se comporten correctamente */
+.modal-content, .drawer-content {
+  -webkit-overflow-scrolling: touch;
+  overflow-y: auto;
+}

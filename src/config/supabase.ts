@@ -3,7 +3,6 @@ import { createClient } from '@supabase/supabase-js';
 // Configuración de Supabase
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const supabaseServiceRoleKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Variables de entorno de Supabase no encontradas');
@@ -17,21 +16,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: false
   }
 });
-
-// Cliente admin de Supabase (para operaciones administrativas)
-export const supabaseAdmin = supabaseServiceRoleKey 
-  ? createClient(supabaseUrl, supabaseServiceRoleKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      }
-    })
-  : null;
-
-// Validar configuración admin
-if (!supabaseAdmin) {
-  // VITE_SUPABASE_SERVICE_ROLE_KEY no configurada. Funciones admin no disponibles.
-}
 
 // Tipos de la base de datos
 export interface Database {
@@ -80,4 +64,4 @@ export interface Database {
       };
     };
   };
-} 
+}

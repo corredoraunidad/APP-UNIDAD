@@ -218,7 +218,7 @@ const UserCreationModal: React.FC<UserCreationModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validaciones
+    // Validaciones - Solo requerir contrato para corredores
     if ((formData.rol === 'broker' || formData.rol === 'broker_externo') && !formData.contractFile) {
       setContractError('El contrato firmado es obligatorio para corredores');
       return;

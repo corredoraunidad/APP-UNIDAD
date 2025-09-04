@@ -345,7 +345,7 @@ export class UserService {
   }
 
   /**
-   * Crear un nuevo usuario completo con contrato
+   * Crear un nuevo usuario completo (con contrato opcional para corredores)
    */
   static async createUserComplete(userData: CreateUserData): Promise<{ 
     user: UserWithContract | null; 
@@ -353,17 +353,17 @@ export class UserService {
     error: string | null 
   }> {
     try {
-      // Verificar que se proporcione un contrato
-      if (!userData.contractFile) {
+      // Verificar que se proporcione un contrato solo para corredores
+      if ((userData.rol === 'broker' || userData.rol === 'broker_externo') && !userData.contractFile) {
         return {
           user: null,
           credentials: null,
-          error: 'El contrato firmado es obligatorio'
+          error: 'El contrato firmado es obligatorio para corredores'
         };
       }
 
-      // Verificar que el archivo sea PDF
-      if (userData.contractFile.type !== 'application/pdf') {
+      // Verificar que el archivo sea PDF (solo si se proporciona un contrato)
+      if (userData.contractFile && userData.contractFile.type !== 'application/pdf') {
         return {
           user: null,
           credentials: null,
@@ -470,50 +470,59 @@ export class UserService {
         };
       }
 
-      // Paso 5: Subir contrato usando FileService
-      const { data: uploadedFile, error: uploadError } = await FileService.uploadFile(
-        userData.contractFile.name,
-        userData.contractFile,
-        userData.contractFile.type,
-        userData.contractFile.size,
-        `/contratos/${tempUserId}`
-      );
+      // Paso 5: Subir contrato usando FileService (solo si hay archivo de contrato)
+      let uploadedFile = null;
+      let contract = null;
 
-      if (uploadError || !uploadedFile) {
-        // Rollback: Eliminar perfil si falla la subida del contrato
-        try {
-          await supabase.from('profiles').delete().eq('id', tempUserId);
-        } catch (rollbackError) {
-          // Manejar error de rollback silenciosamente
+      if (userData.contractFile) {
+        const { data: fileData, error: uploadError } = await FileService.uploadFile(
+          userData.contractFile.name,
+          userData.contractFile,
+          userData.contractFile.type,
+          userData.contractFile.size,
+          `/contratos/${tempUserId}`
+        );
+
+        if (uploadError || !fileData) {
+          // Rollback: Eliminar perfil si falla la subida del contrato
+          try {
+            await supabase.from('profiles').delete().eq('id', tempUserId);
+          } catch (rollbackError) {
+            // Manejar error de rollback silenciosamente
+          }
+          
+          return {
+            user: null,
+            credentials: null,
+            error: uploadError || 'Error al subir contrato'
+          };
         }
-        
-        return {
-          user: null,
-          credentials: null,
-          error: uploadError || 'Error al subir contrato'
-        };
-      }
 
-      // Paso 6: Crear registro de contrato en BD
-      const { contract, error: contractError } = await this.createContractRecord(
-        tempUserId,
-        uploadedFile.id
-      );
+        uploadedFile = fileData;
 
-      if (contractError || !contract) {
-        // Rollback: Eliminar perfil y archivo si falla el registro del contrato
-        try {
-          await supabase.from('profiles').delete().eq('id', tempUserId);
-          await FileService.deleteItem(uploadedFile.id);
-        } catch (rollbackError) {
-          // Manejar error de rollback silenciosamente
+        // Paso 6: Crear registro de contrato en BD
+        const { contract: contractData, error: contractError } = await this.createContractRecord(
+          tempUserId,
+          uploadedFile.id
+        );
+
+        if (contractError || !contractData) {
+          // Rollback: Eliminar perfil y archivo si falla el registro del contrato
+          try {
+            await supabase.from('profiles').delete().eq('id', tempUserId);
+            await FileService.deleteItem(uploadedFile.id);
+          } catch (rollbackError) {
+            // Manejar error de rollback silenciosamente
+          }
+          
+          return {
+            user: null,
+            credentials: null,
+            error: contractError || 'Error al registrar contrato'
+          };
         }
-        
-        return {
-          user: null,
-          credentials: null,
-          error: contractError || 'Error al registrar contrato'
-        };
+
+        contract = contractData;
       }
 
       // Paso 7: Enviar credenciales por email
@@ -557,7 +566,7 @@ export class UserService {
         is_active: profile.is_active ?? true, // Campo de estado activo
         
         // Contrato
-        contract
+        contract: contract || undefined
       };
 
       return {

@@ -1,7 +1,7 @@
 import { supabase, supabaseAdmin } from '../config/supabase';
-import { FileService } from './fileService';
+import { ContractService } from './contractService';
 import { EmailService } from './emailService';
-import type { User, UserContract, CreateUserData, UpdateUserData, UserWithContract, UserFilters } from '../types';
+import type { UserContract, CreateUserData, UpdateUserData, UserWithContract, UserFilters } from '../types';
 
 // Función simple para validar RUT
 const validarRutSimple = (rut: string): boolean => {
@@ -34,48 +34,6 @@ const validarRutSimple = (rut: string): boolean => {
 // Servicio para gestión de usuarios
 export class UserService {
   
-  /**
-   * Obtener jefes comerciales disponibles para asignar
-   */
-  static async getJefesComercialesDisponibles(): Promise<{ jefes: Array<{id: string, nombre: string}> | null; error: string | null }> {
-    try {
-      const { data: profiles, error } = await supabase
-        .from('profiles')
-        .select('id, nombres, apellido_paterno, apellido_materno')
-        .in('rol', ['admin_comercial'])
-        .order('nombres', { ascending: true });
-
-      if (error) {
-        return {
-          jefes: null,
-          error: 'Error al cargar los jefes comerciales'
-        };
-      }
-
-      if (!profiles) {
-        return {
-          jefes: [],
-          error: null
-        };
-      }
-
-      // Convertir a formato para el select
-      const jefes = profiles.map(profile => ({
-        id: profile.id,
-        nombre: `${profile.nombres} ${profile.apellido_paterno}${profile.apellido_materno ? ` ${profile.apellido_materno}` : ''}`.trim()
-      }));
-
-      return {
-        jefes,
-        error: null
-      };
-    } catch (error) {
-      return {
-        jefes: null,
-        error: 'Error de conexión al cargar jefes comerciales'
-      };
-    }
-  }
   
   /**
    * Obtener todos los usuarios de la tabla profiles con contratos
@@ -310,14 +268,14 @@ export class UserService {
    */
   static async createContractRecord(
     userId: string, 
-    fileId: string
+    contractPath: string
   ): Promise<{ contract: UserContract | null; error: string | null }> {
     try {
       const { data: contract, error } = await supabase
         .from('user_contracts')
         .insert([{
           user_id: userId,
-          file_id: fileId,
+          file_path: contractPath, // Ruta del contrato en el bucket 'contracts'
           is_active: true,
           uploaded_by: (await supabase.auth.getUser()).data.user?.id
         }])
@@ -354,7 +312,7 @@ export class UserService {
   }> {
     try {
       // Verificar que se proporcione un contrato solo para corredores
-      if ((userData.rol === 'broker' || userData.rol === 'broker_externo') && !userData.contractFile) {
+      if (userData.rol === 'broker' && !userData.contractFile) {
         return {
           user: null,
           credentials: null,
@@ -497,27 +455,24 @@ export class UserService {
         };
       }
 
-      // Paso 5: Subir contrato usando FileService (solo si hay archivo de contrato)
-      let uploadedFile = null;
+      // Paso 5: Subir contrato usando ContractService (solo si hay archivo de contrato)
+      let contractPath = null;
       let contract = null;
 
       if (userData.contractFile) {
-        const { data: fileData, error: uploadError } = await FileService.uploadFile(
-          userData.contractFile.name,
-          userData.contractFile,
-          userData.contractFile.type,
-          userData.contractFile.size,
-          `/contratos/${authData.user.id}`
+        const { success: uploadSuccess, data: uploadData, error: uploadError } = await ContractService.uploadContract(
+          authData.user.id,
+          userData.contractFile
         );
 
-        if (uploadError || !fileData) {
-                  // Rollback: Eliminar usuario si falla la subida del contrato
-        try {
-          await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
-          await supabase.from('profiles').delete().eq('id', authData.user.id);
-        } catch (rollbackError) {
-          // Manejar error de rollback silenciosamente
-        }
+        if (!uploadSuccess || !uploadData) {
+          // Rollback: Eliminar usuario si falla la subida del contrato
+          try {
+            await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
+            await supabase.from('profiles').delete().eq('id', authData.user.id);
+          } catch (rollbackError) {
+            // Manejar error de rollback silenciosamente
+          }
           
           return {
             user: null,
@@ -526,23 +481,23 @@ export class UserService {
           };
         }
 
-        uploadedFile = fileData;
+        contractPath = uploadData.path;
 
         // Paso 6: Crear registro de contrato en BD
         const { contract: contractData, error: contractError } = await this.createContractRecord(
           authData.user.id,
-          uploadedFile.id
+          contractPath
         );
 
         if (contractError || !contractData) {
-                  // Rollback: Eliminar usuario y archivo si falla el registro del contrato
-        try {
-          await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
-          await supabase.from('profiles').delete().eq('id', authData.user.id);
-          await FileService.deleteItem(uploadedFile.id);
-        } catch (rollbackError) {
-          // Manejar error de rollback silenciosamente
-        }
+          // Rollback: Eliminar usuario y contrato si falla el registro del contrato
+          try {
+            await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
+            await supabase.from('profiles').delete().eq('id', authData.user.id);
+            await ContractService.deleteContract(contractPath);
+          } catch (rollbackError) {
+            // Manejar error de rollback silenciosamente
+          }
           
           return {
             user: null,
@@ -771,57 +726,6 @@ export class UserService {
     }
   }
 
-  /**
-   * Obtener usuarios disponibles como jefes comerciales
-   */
-  static async getAvailableJefesComerciales(): Promise<{ usuarios: User[] | null; error: string | null }> {
-    try {
-      const { data: profiles, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('rol', 'admin_comercial')
-        .order('nombres', { ascending: true });
-
-      if (error) {
-        return {
-          usuarios: null,
-          error: 'Error al cargar jefes comerciales'
-        };
-      }
-
-      if (!profiles) {
-        return {
-          usuarios: [],
-          error: null
-        };
-      }
-
-      const usuarios: User[] = profiles.map(profile => ({
-        id: profile.id,
-        email: profile.email,
-        nombres: profile.nombres,
-        apellido_paterno: profile.apellido_paterno,
-        apellido_materno: profile.apellido_materno,
-        username: profile.username || `${profile.nombres.toLowerCase()}.${profile.apellido_paterno.toLowerCase()}`,
-        rol: profile.rol,
-        uf_vendida: Number(profile.uf_vendida) || 0,
-        fecha_registro: profile.created_at || new Date().toISOString(),
-        jefe_comercial_id: profile.jefe_comercial_id,
-        is_active: profile.is_active ?? true // Campo de estado activo
-      }));
-
-      return {
-        usuarios,
-        error: null
-      };
-
-    } catch (error) {
-      return {
-        usuarios: null,
-        error: 'Error de conexión al cargar jefes comerciales'
-      };
-    }
-  }
 
   // ========================================
   // FUNCIONES PARA CREACIÓN AUTOMÁTICA DE USUARIOS

@@ -1,6 +1,8 @@
 import React from 'react';
 import { AlertTriangle, X } from 'lucide-react';
 import Button from '../ui/Button';
+import { useAuth } from '../../contexts/AuthContext';
+import { canDeleteUser } from '../../utils/userPermissions';
 import type { User } from '../../types';
 
 interface DeleteUserModalProps {
@@ -18,7 +20,10 @@ const DeleteUserModal: React.FC<DeleteUserModalProps> = ({
   user,
   isLoading = false
 }) => {
-  if (!isOpen || !user) {
+  const { user: currentUser } = useAuth();
+  
+  // Verificar permisos antes de mostrar el modal
+  if (!isOpen || !user || !currentUser || !canDeleteUser(currentUser, user)) {
     return null;
   }
 
@@ -32,7 +37,6 @@ const DeleteUserModal: React.FC<DeleteUserModalProps> = ({
       admin_comercial: 'Admin Comercial',
       admin_operaciones: 'Admin Operaciones',
       broker: 'Corredor',
-      broker_externo: 'Corredor Externo'
     };
     return roleMap[rol] || rol;
   };

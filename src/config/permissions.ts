@@ -1,5 +1,5 @@
 // Tipos de roles disponibles
-export type UserRole = 'admin' | 'admin_comercial' | 'admin_operaciones' | 'broker' | 'broker_externo';
+export type UserRole = 'admin' | 'admin_comercial' | 'admin_operaciones' | 'broker';
 
 // Tipos de acciones disponibles
 export type Action = 'view' | 'create' | 'edit' | 'delete' | 'upload' | 'download';
@@ -227,57 +227,6 @@ export const PERMISSIONS: Record<UserRole, RolePermissions> = {
     }
   },
 
-  // Broker Externo - Mismo acceso que broker
-  broker_externo: {
-    dashboard: {
-      view: true,
-      create: false,
-      edit: false,
-      delete: false,
-      upload: false,
-      download: true
-    },
-    usuarios: {
-      view: false,
-      create: false,
-      edit: false,
-      delete: false,
-      upload: false,
-      download: false
-    },
-    archivos: {
-      view: true,
-      create: false,
-      edit: false,
-      delete: false,
-      upload: false,
-      download: true
-    },
-    anuncios: {
-      view: true,
-      create: false,
-      edit: false,
-      delete: false,
-      upload: false,
-      download: true
-    },
-    asistencias_siniestros: {
-      view: true,
-      create: false,
-      edit: false,
-      delete: false,
-      upload: false,
-      download: false
-    },
-    metodos_pago: {
-      view: true,
-      create: false,
-      edit: false,
-      delete: false,
-      upload: false,
-      download: false
-    }
-  }
 };
 
 // Función helper para verificar permisos

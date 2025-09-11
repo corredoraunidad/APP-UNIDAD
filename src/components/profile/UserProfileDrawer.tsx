@@ -42,9 +42,9 @@ const UserProfileDrawer: React.FC<UserProfileDrawerProps> = ({ isOpen, onClose, 
     }
   };
 
-  // Cargar jefe comercial cuando sea broker_externo
+  // Cargar jefe comercial cuando sea broker (funcionalidad removida)
   useEffect(() => {
-    if (user?.rol === 'broker_externo' && user?.jefe_comercial_id) {
+    if (user?.rol === 'broker' && user?.jefe_comercial_id) {
       loadJefeComercial(user.jefe_comercial_id);
     } else {
       setJefeComercial(null);
@@ -65,7 +65,6 @@ const UserProfileDrawer: React.FC<UserProfileDrawerProps> = ({ isOpen, onClose, 
       admin_comercial: 'Admin Comercial',
       admin_operaciones: 'Admin Operaciones',
       broker: 'Corredor',
-      broker_externo: 'Corredor Externo',
     };
     return roleMap[rol] || rol;
   };
@@ -188,8 +187,8 @@ const UserProfileDrawer: React.FC<UserProfileDrawerProps> = ({ isOpen, onClose, 
             </div>
           </div>
 
-          {/* Jefe Comercial (solo para broker_externo) */}
-          {user.rol === 'broker_externo' && (
+          {/* Jefe Comercial (funcionalidad removida) */}
+          {user.rol === 'broker' && user.jefe_comercial_id && (
             <div className="mb-8">
               <h3 className={`text-sm font-medium ${textMuted} mb-3`}>Jefe Comercial</h3>
               {loadingJefe ? (

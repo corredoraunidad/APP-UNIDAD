@@ -53,13 +53,9 @@ export const usePermissions = () => {
   
   // Función para verificar si es broker
   const isBroker = (): boolean => {
-    return userRole === 'broker' || userRole === 'broker_externo';
+    return userRole === 'broker';
   };
   
-  // Función para verificar si es broker externo específicamente
-  const isBrokerExterno = (): boolean => {
-    return userRole === 'broker_externo';
-  };
   
   return {
     userRole,
@@ -70,7 +66,6 @@ export const usePermissions = () => {
     isAdmin,
     isAdminComercial,
     isAdminOperaciones,
-    isBroker,
-    isBrokerExterno
+    isBroker
   };
 }; 

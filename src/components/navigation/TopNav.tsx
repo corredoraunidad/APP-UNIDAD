@@ -140,7 +140,7 @@ const TopNav = ({
                     e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)';
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)';
+                    e.currentTarget.style.backgroundColor = 'transparent';
                   }}
                   title="Perfil de usuario"
                 >

@@ -4,6 +4,8 @@ import { UserService } from '../../services/userService';
 import Button from '../ui/Button';
 import type { UserWithContract, UserFilters } from '../../types';
 import { useThemeClasses } from '../../hooks/useThemeClasses';
+import { useAuth } from '../../contexts/AuthContext';
+import { canDeleteUser } from '../../utils/userPermissions';
 
 interface UserTableProps {
   onEditUser?: (user: UserWithContract) => void;
@@ -22,6 +24,7 @@ const UserTable: React.FC<UserTableProps> = ({
   onPageChange
 }) => {
   const { bgCard, text, textSecondary, textMuted, border, bgSurface, hoverBg } = useThemeClasses();
+  const { user: currentUser } = useAuth();
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [users, setUsers] = useState<UserWithContract[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -84,7 +87,6 @@ const UserTable: React.FC<UserTableProps> = ({
       admin_comercial: 'Admin Comercial',
       admin_operaciones: 'Admin Operaciones',
       broker: 'Corredor',
-      broker_externo: 'Corredor Externo'
     };
     return roleMap[rol] || rol;
   };
@@ -256,20 +258,22 @@ const UserTable: React.FC<UserTableProps> = ({
                         <Eye className="w-4 h-4 mr-3" />
                         Ver detalles
                       </button>
-                      <button
-                        onClick={async (e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          if (onDeleteUser) {
-                            await onDeleteUser(user.id);
-                          }
-                          closeMenu();
-                        }}
-                        className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4 mr-3" />
-                        Eliminar
-                      </button>
+                      {currentUser && canDeleteUser(currentUser, user) && (
+                        <button
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (onDeleteUser) {
+                              await onDeleteUser(user.id);
+                            }
+                            closeMenu();
+                          }}
+                          className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4 mr-3" />
+                          Eliminar
+                        </button>
+                      )}
                     </div>
                   )}
                   
@@ -308,20 +312,22 @@ const UserTable: React.FC<UserTableProps> = ({
                         <Eye className="w-4 h-4 mr-3" />
                         Ver detalles
                       </button>
-                      <button
-                        onClick={async (e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          if (onDeleteUser) {
-                            await onDeleteUser(user.id);
-                          }
-                          closeMenu();
-                        }}
-                        className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4 mr-3" />
-                        Eliminar
-                      </button>
+                      {currentUser && canDeleteUser(currentUser, user) && (
+                        <button
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (onDeleteUser) {
+                              await onDeleteUser(user.id);
+                            }
+                            closeMenu();
+                          }}
+                          className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4 mr-3" />
+                          Eliminar
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>

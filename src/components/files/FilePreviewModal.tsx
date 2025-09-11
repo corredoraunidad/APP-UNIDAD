@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Download, ExternalLink, FileText, Image, FileSpreadsheet, Archive, File } from 'lucide-react';
 import Button from '../ui/Button';
 import { FileService } from '../../services/fileService';
+import { ContractService } from '../../services/contractService';
 import { useThemeClasses } from '../../hooks/useThemeClasses';
 
 interface FilePreviewModalProps {
@@ -11,6 +12,7 @@ interface FilePreviewModalProps {
   fileName: string;
   fileType: string;
   fileSize: number;
+  contractPath?: string; // Ruta del contrato en el bucket 'contracts' (opcional)
 }
 
 const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
@@ -19,7 +21,8 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
   fileId,
   fileName,
   fileType,
-  fileSize
+  fileSize,
+  contractPath
 }) => {
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -28,17 +31,29 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
 
   // Obtener URL de descarga cuando se abre el modal
   useEffect(() => {
-    if (isOpen && fileId) {
+    if (isOpen && (fileId || contractPath)) {
       loadDownloadUrl();
     }
-  }, [isOpen, fileId]);
+  }, [isOpen, fileId, contractPath]);
 
   const loadDownloadUrl = async () => {
     setLoading(true);
     setError(null);
     
     try {
-      const result = await FileService.getFileDownloadUrl(fileId);
+      let result;
+      
+      // Si es un contrato, usar ContractService
+      if (contractPath) {
+        const contractResult = await ContractService.getContractDownloadUrl(contractPath);
+        result = {
+          data: contractResult.success ? contractResult.data?.url : null,
+          error: contractResult.success ? null : contractResult.error
+        };
+      } else {
+        // Si es un archivo normal, usar FileService
+        result = await FileService.getFileDownloadUrl(fileId);
+      }
       
       if (result.error) {
         setError(result.error);

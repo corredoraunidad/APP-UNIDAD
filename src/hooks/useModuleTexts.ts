@@ -10,7 +10,7 @@ interface ModuleTexts {
 export const useModuleTexts = (module: string): ModuleTexts => {
   const { user } = useAuth();
   const userRole = user?.rol || 'broker';
-  const isBroker = userRole === 'broker' || userRole === 'broker_externo';
+  const isBroker = userRole === 'broker';
 
   const moduleTexts: Record<string, ModuleTexts> = {
     usuarios: {

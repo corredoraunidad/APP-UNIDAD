@@ -3,9 +3,9 @@ import { X, FileText, Download, Eye, Edit, Save, X as XIcon } from 'lucide-react
 import Button from '../ui/Button';
 import Switch from '../ui/Switch';
 import { useThemeClasses } from '../../hooks/useThemeClasses';
-import { usePermissions } from '../../hooks/usePermissions';
 import { useAuth } from '../../contexts/AuthContext';
-import { FileService } from '../../services/fileService';
+import { canUpdateUser, canChangeUserStatus } from '../../utils/userPermissions';
+import { ContractService } from '../../services/contractService';
 import { UserService } from '../../services/userService';
 import FilePreviewModal from '../files/FilePreviewModal';
 import UserDeactivationModal from './UserDeactivationModal';
@@ -80,7 +80,6 @@ const UserDetailModal: React.FC<UserDetailModalProps> = ({
   onUserUpdated
 }) => {
   const { modalBg, text, textSecondary, border, inputBg, inputText, inputBorder, bgCard, bgSurface } = useThemeClasses();
-  const { can } = usePermissions();
   const { user: currentUser } = useAuth();
   
   // Estados para previsualización del contrato
@@ -90,6 +89,7 @@ const UserDetailModal: React.FC<UserDetailModalProps> = ({
     name: string;
     mimeType: string;
     size: number;
+    contractPath?: string;
   } | null>(null);
   const [loadingContract, setLoadingContract] = useState(false);
 
@@ -108,24 +108,25 @@ const UserDetailModal: React.FC<UserDetailModalProps> = ({
   const [userToDeactivate, setUserToDeactivate] = useState<UserWithContract | null>(null);
 
   const handlePreviewContract = async () => {
-    if (!user?.contract?.file_id) return;
+    if (!user?.contract?.file_path) return;
     
     setLoadingContract(true);
     try {
-      // Obtener información completa del archivo
-      const { data: fileData, error: fileError } = await FileService.getFileById(user.contract.file_id);
+      // Obtener URL de descarga del contrato
+      const { success, data: downloadData, error } = await ContractService.getContractDownloadUrl(user.contract.file_path);
       
-      if (fileError || !fileData) {
-        console.error('Error al obtener información del archivo:', fileError);
+      if (!success || !downloadData) {
+        console.error('Error al obtener URL del contrato:', error);
         return;
       }
-
+      
       // Configurar datos para previsualización
       setPreviewFile({
-        id: fileData.id,
-        name: fileData.name || 'contrato.pdf',
-        mimeType: fileData.mime_type || 'application/pdf',
-        size: fileData.size || 0
+        id: user.contract.id,
+        name: downloadData.name,
+        mimeType: 'application/pdf',
+        size: downloadData.size,
+        contractPath: user.contract.file_path // Pasar la ruta del contrato
       });
       
       setIsPreviewModalOpen(true);
@@ -137,20 +138,20 @@ const UserDetailModal: React.FC<UserDetailModalProps> = ({
   };
 
   const handleDownloadContract = async () => {
-    if (!user?.contract?.file_id) return;
+    if (!user?.contract?.file_path) return;
     
     try {
-      // Descargar archivo directamente
-      const { data: downloadUrl, error: downloadError } = await FileService.getFileDownloadUrl(user.contract.file_id);
-      if (downloadError || !downloadUrl) {
-        console.error('Error al obtener URL de descarga:', downloadError);
+      // Obtener URL de descarga del contrato
+      const { success, data: downloadData, error } = await ContractService.getContractDownloadUrl(user.contract.file_path);
+      if (!success || !downloadData) {
+        console.error('Error al obtener URL de descarga:', error);
         return;
       }
-
+      
       // Crear enlace de descarga
       const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = 'contrato.pdf';
+      link.href = downloadData.url;
+      link.download = downloadData.name;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -315,8 +316,8 @@ const UserDetailModal: React.FC<UserDetailModalProps> = ({
             </h2>
           </div>
           <div className="flex items-center gap-2">
-            {/* Botón de edición - solo para admins */}
-            {can('usuarios', 'edit') && !isEditing && (
+            {/* Botón de edición - solo para usuarios con permisos específicos */}
+            {currentUser && user && canUpdateUser(currentUser, user) && !isEditing && (
               <button
                 onClick={handleStartEdit}
                 className={`p-2 rounded-full hover:${inputBg} transition-colors`}
@@ -392,7 +393,6 @@ const UserDetailModal: React.FC<UserDetailModalProps> = ({
                   {/* Badge del Rol */}
                   <div className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
                     {user.rol === 'broker' ? 'Corredor' : 
-                     user.rol === 'broker_externo' ? 'Corredor Externo' :
                      user.rol === 'admin' ? 'Administrador' :
                      user.rol === 'admin_comercial' ? 'Admin Comercial' :
                      user.rol === 'admin_operaciones' ? 'Admin Operaciones' : user.rol}
@@ -400,8 +400,8 @@ const UserDetailModal: React.FC<UserDetailModalProps> = ({
                 </div>
               </div>
               
-              {/* Switch del Estado - Solo para administradores - Al lado derecho */}
-              {can('usuarios', 'edit') && (
+              {/* Switch del Estado - Solo para usuarios con permisos específicos */}
+              {currentUser && user && canChangeUserStatus(currentUser, user) && (
                 <div className="flex flex-col items-center space-y-2">
                   <Switch
                     checked={user.is_active}
@@ -601,7 +601,7 @@ const UserDetailModal: React.FC<UserDetailModalProps> = ({
             </div>
 
             {/* Información Laboral - Solo para Corredores */}
-            {(user.rol === 'broker' || user.rol === 'broker_externo') && (
+            {user.rol === 'broker' && (
               <div className="mt-8">
                 <h3 className={`text-lg font-semibold ${text} mb-4 flex items-center`}>
                   <div className="w-1 h-6 bg-[#fd8412] rounded-full mr-3"></div>
@@ -655,27 +655,11 @@ const UserDetailModal: React.FC<UserDetailModalProps> = ({
                   </div>
                 </div>
 
-                {/* Jefe Comercial (solo si es broker externo) */}
-                {user.rol === 'broker_externo' && user.jefe_comercial_id && (
-                  <div className="mt-6">
-                    <div className={`flex items-center space-x-3 ${bgSurface} rounded-xl p-4`}>
-                      <div className={`w-10 h-10 ${bgCard} rounded-lg flex items-center justify-center`}>
-                        <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                        </svg>
-                      </div>
-                      <div>
-                        <p className={`text-sm ${textSecondary}`}>Jefe Comercial</p>
-                        <p className={`font-medium ${text}`}>ID: {user.jefe_comercial_id}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
             )}
 
             {/* Contrato - Solo para Corredores */}
-            {(user.rol === 'broker' || user.rol === 'broker_externo') && user.contract && (
+            {user.rol === 'broker' && user.contract && (
               <div className="mt-8">
                 <h3 className={`text-lg font-semibold ${text} mb-4 flex items-center`}>
                   <div className="w-1 h-6 bg-[#fd8412] rounded-full mr-3"></div>
@@ -722,7 +706,7 @@ const UserDetailModal: React.FC<UserDetailModalProps> = ({
             )}
 
             {/* Comentarios - Solo para Corredores */}
-            {(user.rol === 'broker' || user.rol === 'broker_externo') && user.comentarios && (
+            {user.rol === 'broker' && user.comentarios && (
               <div className="mt-8">
                 <h3 className={`text-lg font-semibold ${text} mb-4 flex items-center`}>
                   <div className="w-1 h-6 bg-[#fd8412] rounded-full mr-3"></div>
@@ -766,7 +750,7 @@ const UserDetailModal: React.FC<UserDetailModalProps> = ({
                 </div>
 
                 {/* UF Vendida (solo si no es corredor) */}
-                {!(user.rol === 'broker' || user.rol === 'broker_externo') && (
+                {user.rol !== 'broker' && (
                   <div className={`flex items-center space-x-3 ${bgSurface} rounded-xl p-4`}>
                     <div className={`w-10 h-10 ${bgCard} rounded-lg flex items-center justify-center`}>
                       <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -817,6 +801,7 @@ const UserDetailModal: React.FC<UserDetailModalProps> = ({
         fileName={previewFile?.name || ''}
         fileType={previewFile?.mimeType || ''}
         fileSize={previewFile?.size || 0}
+        contractPath={previewFile?.contractPath}
       />
     </div>
   );

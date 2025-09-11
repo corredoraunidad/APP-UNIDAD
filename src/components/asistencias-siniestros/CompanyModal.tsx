@@ -4,6 +4,8 @@ import type { Company } from '../../types/asistencias-siniestros';
 import { useThemeClasses } from '../../hooks/useThemeClasses';
 import { usePermissions } from '../../hooks/usePermissions';
 import WebsiteAttachments from './WebsiteAttachments';
+import FilePreviewModal from '../files/FilePreviewModal';
+import type { FileItem } from '../../types/files';
 
 interface CompanyModalProps {
   isOpen: boolean;
@@ -30,6 +32,10 @@ const CompanyModal: React.FC<CompanyModalProps> = ({
     company.websiteAttachments || []
   );
 
+  // Estados para modal de previsualización
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+  const [previewFile, setPreviewFile] = useState<FileItem | null>(null);
+
   // Sincronizar estado cuando cambia la compañía
   useEffect(() => {
     setWebsiteAttachments(company.websiteAttachments || []);
@@ -55,6 +61,12 @@ const CompanyModal: React.FC<CompanyModalProps> = ({
 
   const handleOpenPhone = (phone: string) => {
     window.open(`tel:${phone}`, '_blank');
+  };
+
+  // Manejar previsualización de archivo
+  const handlePreviewFile = (file: FileItem) => {
+    setPreviewFile(file);
+    setIsPreviewModalOpen(true);
   };
 
   if (!isOpen) return null;
@@ -356,8 +368,10 @@ const CompanyModal: React.FC<CompanyModalProps> = ({
               {/* Sección: Archivos Adjuntos del Sitio Web */}
               <WebsiteAttachments
                 companyId={company.id}
+                companyName={company.name}
                 attachmentIds={websiteAttachments}
                 onAttachmentsChange={setWebsiteAttachments}
+                onPreviewFile={handlePreviewFile}
               />
 
               {/* Sección: Contactos Adicionales - Solo visible para administradores */}
@@ -432,6 +446,19 @@ const CompanyModal: React.FC<CompanyModalProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Modal de Previsualización */}
+      <FilePreviewModal
+        isOpen={isPreviewModalOpen}
+        onClose={() => {
+          setIsPreviewModalOpen(false);
+          setPreviewFile(null);
+        }}
+        fileId={previewFile?.id || ''}
+        fileName={previewFile?.name || ''}
+        fileType={previewFile?.mime_type || ''}
+        fileSize={previewFile?.size || 0}
+      />
     </>
   );
 };

@@ -15,20 +15,34 @@ import type { FileItem } from '../../types/files';
 
 interface WebsiteAttachmentsProps {
   companyId: string;
+  companyName: string;
   attachmentIds: string[];
   onAttachmentsChange: (newAttachmentIds: string[]) => void;
+  onPreviewFile: (file: FileItem) => void;
 }
 
 const WebsiteAttachments: React.FC<WebsiteAttachmentsProps> = ({
   companyId,
+  companyName,
   attachmentIds,
-  onAttachmentsChange
+  onAttachmentsChange,
+  onPreviewFile
 }) => {
   const { bgCard, text, textSecondary, textMuted, border, bgSurface } = useThemeClasses();
   const { isBroker } = usePermissions();
   const [attachments, setAttachments] = useState<FileItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+
+  // Función para limpiar el nombre de la compañía para usar en rutas
+  const cleanCompanyName = (name: string): string => {
+    return name
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '') // Remover caracteres especiales
+      .replace(/\s+/g, '-') // Reemplazar espacios con guiones
+      .replace(/-+/g, '-') // Remover guiones múltiples
+      .trim();
+  };
 
   // Cargar archivos adjuntos
   useEffect(() => {
@@ -87,7 +101,7 @@ const WebsiteAttachments: React.FC<WebsiteAttachmentsProps> = ({
         file,
         file.type,
         file.size,
-        `/companies/${companyId}/attachments`
+        `/instructivos-asistencias/companias/${cleanCompanyName(companyName)}/adjuntos`
       );
       
       if (error) {
@@ -174,23 +188,8 @@ const WebsiteAttachments: React.FC<WebsiteAttachmentsProps> = ({
   };
 
   // Vista previa archivo
-  const handlePreviewFile = async (file: FileItem) => {
-    try {
-      const { data: downloadUrl, error } = await FileService.getFileDownloadUrl(file.id);
-      
-      if (error) {
-        alert('Error al obtener URL de vista previa');
-        return;
-      }
-
-      if (downloadUrl) {
-        // Abrir en nueva pestaña para vista previa
-        window.open(downloadUrl, '_blank');
-      }
-    } catch (error) {
-      console.error('Error en vista previa:', error);
-      alert('Error al abrir vista previa');
-    }
+  const handlePreviewFile = (file: FileItem) => {
+    onPreviewFile(file);
   };
 
   // Formatear tamaño de archivo

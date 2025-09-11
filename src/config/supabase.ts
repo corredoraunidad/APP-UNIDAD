@@ -44,7 +44,7 @@ export interface Database {
           nombres: string;
           apellido_paterno: string;
           apellido_materno: string | null;
-          rol: 'admin' | 'admin_comercial' | 'broker' | 'broker_externo';
+          rol: 'admin' | 'admin_comercial' | 'broker';
           username: string | null;
           jefe_comercial_id: string | null;
           uf_vendida: number | null;
@@ -57,7 +57,7 @@ export interface Database {
           nombres: string;
           apellido_paterno: string;
           apellido_materno?: string | null;
-          rol: 'admin' | 'admin_comercial' | 'broker' | 'broker_externo';
+          rol: 'admin' | 'admin_comercial' | 'broker';
           username?: string | null;
           jefe_comercial_id?: string | null;
           uf_vendida?: number | null;
@@ -70,7 +70,7 @@ export interface Database {
           nombres?: string;
           apellido_paterno?: string;
           apellido_materno?: string | null;
-          rol?: 'admin' | 'admin_comercial' | 'broker' | 'broker_externo';
+          rol?: 'admin' | 'admin_comercial' | 'broker';
           username?: string | null;
           jefe_comercial_id?: string | null;
           uf_vendida?: number | null;

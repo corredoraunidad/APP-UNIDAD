@@ -185,6 +185,85 @@ export class FileService {
   }
 
   /**
+   * Asegurar que una carpeta existe, creándola si es necesario
+   */
+  private static async ensureFolderExists(folderPath: string): Promise<{ success: boolean; folderId: string | null; error: string | null }> {
+    try {
+      // Si es la raíz, no necesitamos crear nada
+      if (folderPath === '/') {
+        return { success: true, folderId: null, error: null };
+      }
+
+      // Verificar si la carpeta ya existe
+      const { data: existingFolder } = await supabase
+        .from('files')
+        .select('id')
+        .eq('type', 'folder')
+        .eq('path', folderPath)
+        .eq('is_deleted', false)
+        .single();
+
+      if (existingFolder) {
+        return { success: true, folderId: existingFolder.id, error: null };
+      }
+
+      // Crear la carpeta paso a paso
+      const pathParts = folderPath.split('/').filter(part => part !== '');
+      let currentPath = '';
+      let parentId = null;
+
+      for (const part of pathParts) {
+        currentPath = currentPath === '' ? `/${part}` : `${currentPath}/${part}`;
+        
+        // Verificar si esta parte del path ya existe
+        const { data: existingPart } = await supabase
+          .from('files')
+          .select('id')
+          .eq('type', 'folder')
+          .eq('path', currentPath)
+          .eq('is_deleted', false)
+          .single();
+
+        if (existingPart) {
+          parentId = existingPart.id;
+        } else {
+          // Crear esta parte de la carpeta
+          const { data: newFolder, error: createError } = await supabase
+            .from('files')
+            .insert({
+              name: part,
+              type: 'folder',
+              path: currentPath,
+              parent_id: parentId,
+              created_by: (await supabase.auth.getUser()).data.user?.id
+            })
+            .select('id')
+            .single() as { data: { id: string } | null; error: any };
+
+          if (createError || !newFolder) {
+            return { 
+              success: false, 
+              folderId: null, 
+              error: `Error creando carpeta ${currentPath}: ${createError?.message || 'Error desconocido'}` 
+            };
+          }
+
+          parentId = newFolder.id;
+        }
+      }
+
+      return { success: true, folderId: parentId, error: null };
+
+    } catch (error) {
+      return { 
+        success: false, 
+        folderId: null, 
+        error: `Error asegurando carpeta: ${error instanceof Error ? error.message : 'Error desconocido'}` 
+      };
+    }
+  }
+
+  /**
    * Subir archivo
    */
   static async uploadFile(
@@ -223,18 +302,19 @@ export class FileService {
         };
       }
 
-      // Obtener el parent_id si no es la raíz
+      // Asegurar que la carpeta padre existe y obtener su ID
       let parentId = null;
       if (parentPath !== '/') {
-        const { data: parentFolder } = await supabase
-          .from('files')
-          .select('id')
-          .eq('type', 'folder')
-          .eq('path', parentPath)
-          .eq('is_deleted', false)
-          .single();
+        const { success, folderId, error: folderError } = await this.ensureFolderExists(parentPath);
         
-        parentId = parentFolder?.id || null;
+        if (!success) {
+          return { 
+            data: null, 
+            error: folderError || 'Error creando carpeta padre' 
+          };
+        }
+        
+        parentId = folderId;
       }
 
       // Generar un nombre único para el archivo en storage

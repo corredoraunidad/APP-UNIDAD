@@ -7,7 +7,7 @@ export type AnnouncementPriority = 'low' | 'medium' | 'high';
 export type AnnouncementStatus = 'draft' | 'published' | 'archived';
 
 // Tipos de roles destinatarios
-export type AnnouncementRoleType = 'admin' | 'admin_comercial' | 'admin_operaciones' | 'broker' | 'broker_externo';
+export type AnnouncementRoleType = 'admin' | 'admin_comercial' | 'admin_operaciones' | 'broker';
 
 // Interfaz principal de anuncio
 export interface Announcement {

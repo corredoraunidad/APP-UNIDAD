@@ -123,7 +123,6 @@ const UserListHeader: React.FC<UserListHeaderProps> = ({
                 <option value="admin_comercial">Admin Comercial</option>
                 <option value="admin_operaciones">Admin Operaciones</option>
                 <option value="broker">Corredor</option>
-                <option value="broker_externo">Corredor Externo</option>
               </select>
             </div>
 

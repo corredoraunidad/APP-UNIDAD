@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { X, Loader, Upload, FileText } from 'lucide-react';
 import Button from '../ui/Button';
-import { UserService } from '../../services/userService';
 import { useThemeClasses } from '../../hooks/useThemeClasses';
+import { useAuth } from '../../contexts/AuthContext';
+import { canCreateUser } from '../../utils/userPermissions';
 import type { CreateUserData } from '../../types';
 
 // Lista simple de regiones de Chile
@@ -87,6 +88,7 @@ const UserCreationModal: React.FC<UserCreationModalProps> = ({
   onSubmit
 }) => {
   const { modalBg, text, textSecondary, border, inputBg, inputBorder, inputText, inputPlaceholder } = useThemeClasses();
+  const { user: currentUser } = useAuth();
   const [formData, setFormData] = useState<CreateUserData>({
     nombres: '',
     apellido_paterno: '',
@@ -94,7 +96,6 @@ const UserCreationModal: React.FC<UserCreationModalProps> = ({
     email: '',
     username: '',
     rol: 'broker',
-    jefe_comercial_id: null,
     
     // Nuevos campos
     rut: '',
@@ -115,47 +116,20 @@ const UserCreationModal: React.FC<UserCreationModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   
-  // Estado para jefes comerciales reales
-  const [jefesComercialesDisponibles, setJefesComercialesDisponibles] = useState<Array<{id: string, nombre: string}>>([]);
-  const [loadingJefes, setLoadingJefes] = useState(false);
 
   // Estados para validaciones
   const [rutError, setRutError] = useState<string | null>(null);
   const [contractError, setContractError] = useState<string | null>(null);
   const [contractFileName, setContractFileName] = useState<string>('');
 
-  // Función para cargar jefes comerciales
-  const loadJefesComercialesDisponibles = async () => {
-    setLoadingJefes(true);
-    try {
-      const { jefes, error } = await UserService.getJefesComercialesDisponibles();
-      if (error) {
-        setJefesComercialesDisponibles([]);
-      } else {
-        setJefesComercialesDisponibles(jefes || []);
-      }
-    } catch (error) {
-      setJefesComercialesDisponibles([]);
-    } finally {
-      setLoadingJefes(false);
-    }
-  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     
-    // Manejar jefe_comercial_id especialmente
-    if (name === 'jefe_comercial_id') {
-      setFormData(prev => ({
-        ...prev,
-        [name]: value || null
-      }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        [name]: value
-      }));
-    }
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
 
     // Validación de RUT en tiempo real
     if (name === 'rut' && value) {
@@ -218,8 +192,14 @@ const UserCreationModal: React.FC<UserCreationModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Validar permisos de creación
+    if (!currentUser || !canCreateUser(currentUser, formData.rol)) {
+      setSubmitError('No tienes permisos para crear usuarios con este rol');
+      return;
+    }
+    
     // Validaciones - Solo requerir contrato para corredores
-    if ((formData.rol === 'broker' || formData.rol === 'broker_externo') && !formData.contractFile) {
+    if (formData.rol === 'broker' && !formData.contractFile) {
       setContractError('El contrato firmado es obligatorio para corredores');
       return;
     }
@@ -229,11 +209,6 @@ const UserCreationModal: React.FC<UserCreationModalProps> = ({
       return;
     }
 
-    // Validar jefe comercial solo si es broker_externo
-    if (formData.rol === 'broker_externo' && !formData.jefe_comercial_id) {
-      setSubmitError('El jefe comercial es obligatorio para corredores externos');
-      return;
-    }
 
     // Limpiar errores anteriores
     setSubmitError(null);
@@ -258,7 +233,6 @@ const UserCreationModal: React.FC<UserCreationModalProps> = ({
       email: '',
       username: '',
       rol: 'broker',
-      jefe_comercial_id: null,
       rut: '',
       telefono: '',
       direccion: '',
@@ -298,12 +272,6 @@ const UserCreationModal: React.FC<UserCreationModalProps> = ({
     };
   }, [isOpen]);
 
-  // Cargar jefes comerciales cuando se abre el modal
-  useEffect(() => {
-    if (isOpen) {
-      loadJefesComercialesDisponibles();
-    }
-  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -546,16 +514,23 @@ const UserCreationModal: React.FC<UserCreationModalProps> = ({
               disabled={isSubmitting}
               className={`w-full px-4 py-3 ${inputBg} ${inputText} border ${inputBorder} rounded-xl focus:ring-2 focus:ring-[#fd8412] focus:border-[#fd8412] transition-colors disabled:bg-gray-50 disabled:cursor-not-allowed`}
             >
-              <option value="admin">Administrador</option>
-              <option value="admin_comercial">Admin Comercial</option>
-              <option value="admin_operaciones">Admin Operaciones</option>
-              <option value="broker">Corredor</option>
-              <option value="broker_externo">Corredor Externo</option>
+              {currentUser && canCreateUser(currentUser, 'admin') && (
+                <option value="admin">Administrador</option>
+              )}
+              {currentUser && canCreateUser(currentUser, 'admin_comercial') && (
+                <option value="admin_comercial">Admin Comercial</option>
+              )}
+              {currentUser && canCreateUser(currentUser, 'admin_operaciones') && (
+                <option value="admin_operaciones">Admin Operaciones</option>
+              )}
+              {currentUser && canCreateUser(currentUser, 'broker') && (
+                <option value="broker">Corredor</option>
+              )}
             </select>
           </div>
 
           {/* Información Laboral - Solo para Corredores */}
-          {(formData.rol === 'broker' || formData.rol === 'broker_externo') && (
+          {formData.rol === 'broker' && (
             <div className="space-y-4 animate-fadeIn">
               <h3 className={`text-lg font-semibold ${text} border-b ${border} pb-2`}>
                 Información Laboral
@@ -595,40 +570,11 @@ const UserCreationModal: React.FC<UserCreationModalProps> = ({
                 </div>
               </div>
 
-              {/* Jefe Comercial (solo si es broker externo) */}
-              {formData.rol === 'broker_externo' && (
-                <div>
-                  <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
-                    Jefe Comercial *
-                  </label>
-                  <select
-                    name="jefe_comercial_id"
-                    value={formData.jefe_comercial_id || ''}
-                    onChange={handleInputChange}
-                    required
-                    disabled={isSubmitting || loadingJefes}
-                    className={`w-full px-4 py-3 ${inputBg} ${inputText} border ${inputBorder} rounded-xl focus:ring-2 focus:ring-[#fd8412] focus:border-[#fd8412] transition-colors disabled:bg-gray-50 disabled:cursor-not-allowed`}
-                  >
-                    {loadingJefes ? (
-                      <option value="">Cargando jefes comerciales...</option>
-                    ) : (
-                      <>
-                        <option value="">Selecciona un jefe comercial</option>
-                        {jefesComercialesDisponibles.map((jefe) => (
-                          <option key={jefe.id} value={jefe.id}>
-                            {jefe.nombre}
-                          </option>
-                        ))}
-                      </>
-                    )}
-                  </select>
-                </div>
-              )}
             </div>
           )}
 
           {/* Contrato y Comentarios - Solo para Corredores */}
-          {(formData.rol === 'broker' || formData.rol === 'broker_externo') && (
+          {formData.rol === 'broker' && (
             <>
               {/* Contrato */}
               <div className="space-y-4 animate-fadeIn">

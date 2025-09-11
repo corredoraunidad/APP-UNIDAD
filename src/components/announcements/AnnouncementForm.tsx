@@ -84,7 +84,7 @@ const AnnouncementForm: React.FC<AnnouncementFormProps> = ({
 
   // Manejar selección de todos los roles
   const handleSelectAllRoles = () => {
-    const allRoles: AnnouncementRoleType[] = ['admin', 'admin_comercial', 'admin_operaciones', 'broker', 'broker_externo'];
+    const allRoles: AnnouncementRoleType[] = ['admin', 'admin_comercial', 'admin_operaciones', 'broker'];
     const isAllSelected = allRoles.every(role => formData.target_roles.includes(role));
     
     setFormData(prev => ({
@@ -302,7 +302,7 @@ const AnnouncementForm: React.FC<AnnouncementFormProps> = ({
                          role === 'admin_comercial' ? 'Admin Comercial' :
                          role === 'admin_operaciones' ? 'Admin Operaciones' :
                          role === 'broker' ? 'Corredor' :
-                         role === 'broker_externo' ? 'Corredor Externo' : role}
+                         role}
                       </span>
                     </label>
                   ))}

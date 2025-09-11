@@ -94,7 +94,7 @@ const AnnouncementForm: React.FC<AnnouncementFormProps> = ({
   };
 
   // Verificar si todos los roles están seleccionados
-  const allRoles: AnnouncementRoleType[] = ['admin', 'admin_comercial', 'admin_operaciones', 'broker', 'broker_externo'];
+  const allRoles: AnnouncementRoleType[] = ['admin', 'admin_comercial', 'admin_operaciones', 'broker'];
   const isAllSelected = allRoles.every(role => formData.target_roles.includes(role));
   const isIndeterminate = formData.target_roles.length > 0 && formData.target_roles.length < allRoles.length;
 

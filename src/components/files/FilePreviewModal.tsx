@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { X, Download, ExternalLink, FileText, Image, FileSpreadsheet, Archive, File } from 'lucide-react';
+import { X, Download, ExternalLink, FileText, Image, FileSpreadsheet, Archive, File, Maximize, Minimize } from 'lucide-react';
 import Button from '../ui/Button';
 import { FileService } from '../../services/fileService';
 import { ContractService } from '../../services/contractService';
+import { FilePermissionService } from '../../services/filePermissionService';
 import { useThemeClasses } from '../../hooks/useThemeClasses';
+import { useAuth } from '../../hooks/useAuth';
 
 interface FilePreviewModalProps {
   isOpen: boolean;
@@ -27,7 +29,10 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [canDownload, setCanDownload] = useState<boolean>(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const { modalBg, text, textSecondary, textMuted, border, bgSurface } = useThemeClasses();
+  const { user } = useAuth();
 
   // Obtener URL de descarga cuando se abre el modal
   useEffect(() => {
@@ -35,6 +40,13 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
       loadDownloadUrl();
     }
   }, [isOpen, fileId, contractPath]);
+
+  // Resetear pantalla completa cuando se cierra el modal
+  useEffect(() => {
+    if (!isOpen) {
+      setIsFullscreen(false);
+    }
+  }, [isOpen]);
 
   const loadDownloadUrl = async () => {
     setLoading(true);
@@ -50,9 +62,17 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
           data: contractResult.success ? contractResult.data?.url : null,
           error: contractResult.success ? null : contractResult.error
         };
+        // Para contratos, asumimos que si puede ver, puede descargar
+        setCanDownload(true);
       } else {
-        // Si es un archivo normal, usar FileService
-        result = await FileService.getFileDownloadUrl(fileId);
+        // Si es un archivo normal, usar FileService para previsualización (solo verifica permisos de visualización)
+        result = await FileService.getFilePreviewUrl(fileId);
+        
+        // Verificar permisos de descarga por separado
+        if (user?.rol) {
+          const canDownloadFile = await FilePermissionService.canRoleDownloadFile(fileId, user.rol);
+          setCanDownload(canDownloadFile);
+        }
       }
       
       if (result.error) {
@@ -67,16 +87,37 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
     }
   };
 
-  const handleDownload = () => {
-    if (downloadUrl) {
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = fileName;
-      link.target = '_blank';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+  const handleDownload = async () => {
+    if (!canDownload) {
+      setError('No tienes permisos para descargar este archivo');
+      return;
     }
+
+    try {
+      // Obtener URL de descarga real (con verificación de permisos)
+      const result = await FileService.getFileDownloadUrl(fileId);
+      
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+
+      if (result.data) {
+        const link = document.createElement('a');
+        link.href = result.data;
+        link.download = fileName;
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    } catch (err: any) {
+      setError('Error al descargar el archivo');
+    }
+  };
+
+  const toggleFullscreen = () => {
+    setIsFullscreen(!isFullscreen);
   };
 
   const handleOpenInNewTab = () => {
@@ -219,7 +260,11 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
       />
       
       {/* Modal */}
-      <div className={`relative ${modalBg} rounded-2xl shadow-xl w-full max-w-4xl mx-4 transform transition-all max-h-[calc(100vh-2rem)] overflow-hidden modal-content`}>
+      <div className={`relative ${modalBg} rounded-2xl shadow-xl w-full ${
+        isFullscreen 
+          ? 'w-screen h-screen max-w-none mx-0 rounded-none' 
+          : 'max-w-4xl mx-4 max-h-[calc(100vh-2rem)]'
+      } transform transition-all overflow-hidden modal-content`}>
         {/* Header */}
         <div className={`flex items-center justify-between p-6 border-b ${border}`}>
           <div className="flex items-center space-x-3">
@@ -240,7 +285,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
             <div className="hidden lg:flex items-center space-x-2">
               {downloadUrl && (
                 <>
-                  {canPreview() && (
+                  {canPreview() && user?.rol !== 'broker' && (
                     <Button
                       variant="outlined"
                       color="primary"
@@ -252,19 +297,30 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
                       Abrir
                     </Button>
                   )}
-                  <Button
-                    variant="outlined"
-                    color="primary"
-                    size="sm"
-                    onClick={handleDownload}
-                    className="flex items-center"
-                  >
-                    <Download size={16} className="mr-1" />
-                    Descargar
-                  </Button>
+                  {canDownload && (
+                    <Button
+                      variant="outlined"
+                      color="primary"
+                      size="sm"
+                      onClick={handleDownload}
+                      className="flex items-center"
+                    >
+                      <Download size={16} className="mr-1" />
+                      Descargar
+                    </Button>
+                  )}
                 </>
               )}
             </div>
+            
+            {/* Botón de pantalla completa - siempre visible */}
+            <button
+              onClick={toggleFullscreen}
+              className={`p-2 ${textMuted} hover:${textSecondary} transition-colors`}
+              title={isFullscreen ? "Salir de pantalla completa" : "Pantalla completa"}
+            >
+              {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
+            </button>
             
             {/* Botón de cerrar - siempre visible */}
             <button
@@ -277,7 +333,11 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-auto max-h-[calc(90vh-140px)]">
+        <div className={`p-6 overflow-auto ${
+          isFullscreen 
+            ? 'h-[calc(100vh-140px)]' 
+            : 'max-h-[calc(90vh-140px)]'
+        }`}>
           {renderPreview()}
         </div>
 
@@ -285,7 +345,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
         {downloadUrl && (
           <div className="lg:hidden p-6 border-t border-gray-200 dark:border-gray-700">
             <div className="flex space-x-3 justify-center">
-              {canPreview() && (
+              {canPreview() && user?.rol !== 'broker' && (
                 <Button
                   variant="outlined"
                   color="primary"
@@ -297,16 +357,18 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
                   Abrir
                 </Button>
               )}
-              <Button
-                variant="outlined"
-                color="primary"
-                size="sm"
-                onClick={handleDownload}
-                className="flex items-center"
-              >
-                <Download size={16} className="mr-1" />
-                Descargar
-              </Button>
+              {canDownload && (
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  size="sm"
+                  onClick={handleDownload}
+                  className="flex items-center"
+                >
+                  <Download size={16} className="mr-1" />
+                  Descargar
+                </Button>
+              )}
             </div>
           </div>
         )}

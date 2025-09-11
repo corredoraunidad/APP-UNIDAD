@@ -62,4 +62,28 @@ export interface FolderContentCount {
   filesCount: number;
   foldersCount: number;
   totalCount: number;
+}
+
+// Tipos para permisos de archivos
+export interface FilePermission {
+  id: string;
+  file_id: string;
+  role: string;
+  can_view: boolean;
+  can_download: boolean;
+  granted_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FilePermissionUpdate {
+  role: string;
+  can_download: boolean;
+}
+
+export interface FilePermissionByRole {
+  admin: { can_view: boolean; can_download: boolean };
+  admin_comercial: { can_view: boolean; can_download: boolean };
+  admin_operaciones: { can_view: boolean; can_download: boolean };
+  broker: { can_view: boolean; can_download: boolean };
 } 

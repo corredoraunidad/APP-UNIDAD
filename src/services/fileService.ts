@@ -5,6 +5,7 @@ import type {
   FolderContents, 
   FileServiceResponse
 } from '../types/files';
+import { FilePermissionService } from './filePermissionService';
 
 export class FileService {
   
@@ -13,6 +14,21 @@ export class FileService {
    */
   static async getFolderContents(path: string = '/'): Promise<FileServiceResponse<FolderContents>> {
     try {
+      // Obtener el rol del usuario actual
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        return { data: null, error: 'Usuario no autenticado' };
+      }
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('rol')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile?.rol) {
+        return { data: null, error: 'Rol de usuario no encontrado' };
+      }
 
       // Para la raíz, buscamos elementos que tengan path = '/' o que estén directamente en la raíz
       let foldersQuery = supabase
@@ -75,22 +91,31 @@ export class FileService {
         path: folder.path,
       })) || [];
 
-      const currentFiles: FileItem[] = files?.map(file => ({
-        id: file.id,
-        name: file.name,
-        type: 'file',
-        size: file.size || 0,
-        created_at: file.created_at,
-        updated_at: file.updated_at,
-        path: file.path,
-        mime_type: file.mime_type,
-        storage_path: file.storage_path,
-      })) || [];
+      // Filtrar archivos por permisos de visualización
+      const filteredFiles: FileItem[] = [];
+      if (files) {
+        for (const file of files) {
+          const canView = await FilePermissionService.canRoleViewFile(file.id, profile.rol);
+          if (canView) {
+            filteredFiles.push({
+              id: file.id,
+              name: file.name,
+              type: 'file',
+              size: file.size || 0,
+              created_at: file.created_at,
+              updated_at: file.updated_at,
+              path: file.path,
+              mime_type: file.mime_type,
+              storage_path: file.storage_path,
+            });
+          }
+        }
+      }
 
       return {
         data: {
           folders: currentFolders,
-          files: currentFiles,
+          files: filteredFiles,
         },
         error: null
       };
@@ -385,6 +410,26 @@ export class FileService {
    */
   static async deleteItem(itemId: string): Promise<FileServiceResponse<void>> {
     try {
+      // Obtener el rol del usuario actual
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        return { data: null, error: 'Usuario no autenticado' };
+      }
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('rol')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile?.rol) {
+        return { data: null, error: 'Rol de usuario no encontrado' };
+      }
+
+      // Solo admins pueden eliminar archivos
+      if (!['admin', 'admin_comercial', 'admin_operaciones'].includes(profile.rol)) {
+        return { data: null, error: 'No tienes permisos para eliminar archivos' };
+      }
 
       // Obtener información del archivo antes de eliminarlo
       const { data: fileData, error: fetchError } = await supabase
@@ -491,10 +536,84 @@ export class FileService {
   }
 
   /**
+   * Obtener URL de previsualización de un archivo (solo verifica permisos de visualización)
+   */
+  static async getFilePreviewUrl(fileId: string): Promise<FileServiceResponse<string>> {
+    try {
+      // Obtener el rol del usuario actual
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        return { data: null, error: 'Usuario no autenticado' };
+      }
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('rol')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile?.rol) {
+        return { data: null, error: 'Rol de usuario no encontrado' };
+      }
+
+      // Verificar permisos de visualización
+      const canView = await FilePermissionService.canRoleViewFile(fileId, profile.rol);
+      if (!canView) {
+        return { data: null, error: 'No tienes permisos para ver este archivo' };
+      }
+
+      // Obtener la ruta de storage desde la base de datos
+      const { data: fileData, error } = await supabase
+        .from('files')
+        .select('storage_path')
+        .eq('id', fileId)
+        .eq('is_deleted', false)
+        .single();
+
+      if (error || !fileData?.storage_path) {
+        return { data: null, error: 'Archivo no encontrado' };
+      }
+
+      // Obtener URL pública
+      const { data } = supabase.storage
+        .from('files')
+        .getPublicUrl(fileData.storage_path);
+
+      return { data: data.publicUrl, error: null };
+    } catch (error: any) {
+      return { 
+        data: null, 
+        error: error.message || 'Error al obtener URL de previsualización' 
+      };
+    }
+  }
+
+  /**
    * Obtener URL de descarga de un archivo
    */
   static async getFileDownloadUrl(fileId: string): Promise<FileServiceResponse<string>> {
     try {
+      // Obtener el rol del usuario actual
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        return { data: null, error: 'Usuario no autenticado' };
+      }
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('rol')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile?.rol) {
+        return { data: null, error: 'Rol de usuario no encontrado' };
+      }
+
+      // Verificar permisos de descarga
+      const canDownload = await FilePermissionService.canRoleDownloadFile(fileId, profile.rol);
+      if (!canDownload) {
+        return { data: null, error: 'No tienes permisos para descargar este archivo' };
+      }
 
       // Obtener la ruta de storage desde la base de datos
       const { data: fileData, error } = await supabase

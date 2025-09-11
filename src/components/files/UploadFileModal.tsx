@@ -1,12 +1,13 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { X, Upload, AlertCircle, CheckCircle } from 'lucide-react';
+import { X, Upload, AlertCircle, CheckCircle, Shield } from 'lucide-react';
 import Button from '../ui/Button';
 import { useThemeClasses } from '../../hooks/useThemeClasses';
+import { useAuth } from '../../hooks/useAuth';
 
 interface UploadFileModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (file: File) => void;
+  onSubmit: (file: File, permissions?: { [role: string]: boolean }) => void;
   currentPath: string;
   loading?: boolean;
 }
@@ -21,8 +22,27 @@ const UploadFileModal: React.FC<UploadFileModalProps> = ({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [configurePermissions, setConfigurePermissions] = useState(false);
+  const [permissions, setPermissions] = useState({
+    admin: true,
+    admin_comercial: true,
+    admin_operaciones: true,
+    broker: false
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { modalBg, text, textSecondary, textMuted, border, bgSurface } = useThemeClasses();
+  const { user } = useAuth();
+
+  // Verificar si es admin
+  const isAdmin = user?.rol && ['admin', 'admin_comercial', 'admin_operaciones'].includes(user.rol);
+
+  // Etiquetas de roles
+  const roleLabels = {
+    admin: 'Administrador',
+    admin_comercial: 'Admin Comercial',
+    admin_operaciones: 'Admin Operaciones',
+    broker: 'Corredor'
+  };
 
   // Configuración de archivos permitidos
   const allowedTypes = [
@@ -113,13 +133,20 @@ const UploadFileModal: React.FC<UploadFileModalProps> = ({
     }
 
     setError(null);
-    onSubmit(selectedFile);
+    onSubmit(selectedFile, configurePermissions ? permissions : undefined);
   };
 
   const handleClose = () => {
     setSelectedFile(null);
     setError(null);
     setDragActive(false);
+    setConfigurePermissions(false);
+    setPermissions({
+      admin: true,
+      admin_comercial: true,
+      admin_operaciones: true,
+      broker: false
+    });
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -270,6 +297,61 @@ const UploadFileModal: React.FC<UploadFileModalProps> = ({
                 <li>• Tamaño máximo: 50MB</li>
               </ul>
             </div>
+
+            {/* Configuración de permisos (solo para admins) */}
+            {isAdmin && selectedFile && (
+              <div className={`${bgSurface} rounded-lg p-4`}>
+                <div className="flex items-center space-x-2 mb-3">
+                  <Shield size={16} className="text-blue-600" />
+                  <span className={`text-sm font-medium ${text}`}>
+                    Configurar permisos de descarga
+                  </span>
+                </div>
+                
+                <div className="flex items-center space-x-2 mb-4">
+                  <input
+                    type="checkbox"
+                    id="configurePermissions"
+                    checked={configurePermissions}
+                    onChange={(e) => setConfigurePermissions(e.target.checked)}
+                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                  />
+                  <label htmlFor="configurePermissions" className={`text-sm ${textSecondary}`}>
+                    Personalizar permisos de descarga
+                  </label>
+                </div>
+
+                {configurePermissions && (
+                  <div className="space-y-3">
+                    <p className={`text-xs ${textSecondary}`}>
+                      Selecciona qué roles pueden descargar este archivo:
+                    </p>
+                    {Object.entries(permissions).map(([role, canDownload]) => (
+                      <div key={role} className="flex items-center justify-between">
+                        <span className={`text-sm ${text}`}>
+                          {roleLabels[role as keyof typeof roleLabels]}
+                        </span>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={canDownload}
+                            onChange={(e) => setPermissions(prev => ({
+                              ...prev,
+                              [role]: e.target.checked
+                            }))}
+                            className="sr-only peer"
+                          />
+                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
+                      </div>
+                    ))}
+                    <p className={`text-xs ${textMuted}`}>
+                      Si no configuras permisos, se usarán los valores por defecto (solo admins pueden descargar)
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Actions */}

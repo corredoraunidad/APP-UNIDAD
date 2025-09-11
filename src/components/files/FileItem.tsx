@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { 
   Folder, 
   FileText, 
@@ -10,9 +10,13 @@ import {
   Eye,
   Download,
   Edit,
-  Trash2
+  Trash2,
+  Shield,
+  Lock,
+  Unlock
 } from 'lucide-react';
 import { useThemeClasses } from '../../hooks/useThemeClasses';
+import { FilePermissionService } from '../../services/filePermissionService';
 
 interface FileItemProps {
   id: string;
@@ -28,8 +32,11 @@ interface FileItemProps {
   onRename?: (id: string) => void;
   onDelete?: (id: string) => void;
   onPreview?: (id: string, name: string, mimeType: string, size: number) => void;
+  onManagePermissions?: (id: string) => void;
   openMenuId: string | null;
   setOpenMenuId: (id: string | null) => void;
+  userRole?: string;
+  isAdmin?: boolean;
 }
 
 const FileItem: React.FC<FileItemProps> = ({
@@ -46,11 +53,50 @@ const FileItem: React.FC<FileItemProps> = ({
   onRename,
   onDelete,
   onPreview,
+  onManagePermissions,
   openMenuId,
-  setOpenMenuId
+  setOpenMenuId,
+  userRole,
+  isAdmin = false
 }) => {
   const { bgCard, text, textSecondary, textMuted, hoverBg, border } = useThemeClasses();
   const menuRef = useRef<HTMLDivElement>(null);
+  const [canDownload, setCanDownload] = useState<boolean>(false);
+  const [brokerCanDownload, setBrokerCanDownload] = useState<boolean>(false);
+  const [brokerPermissionsLoaded, setBrokerPermissionsLoaded] = useState<boolean>(false);
+
+  // Cargar permisos de descarga
+  useEffect(() => {
+    if (type === 'file' && userRole) {
+      loadDownloadPermission();
+      // Si es admin, también cargar permisos de brokers para el candado
+      if (['admin', 'admin_comercial', 'admin_operaciones'].includes(userRole)) {
+        loadBrokerPermissions();
+      }
+    }
+  }, [id, userRole, type]);
+
+  const loadDownloadPermission = async () => {
+    try {
+      const canDownloadFile = await FilePermissionService.canRoleDownloadFile(id, userRole!);
+      setCanDownload(canDownloadFile);
+    } catch (error) {
+      // En caso de error, usar por defecto (solo admins pueden descargar)
+      setCanDownload(['admin', 'admin_comercial', 'admin_operaciones'].includes(userRole!));
+    }
+  };
+
+  const loadBrokerPermissions = async () => {
+    try {
+      const brokerCanDownloadFile = await FilePermissionService.canRoleDownloadFile(id, 'broker');
+      setBrokerCanDownload(brokerCanDownloadFile);
+      setBrokerPermissionsLoaded(true);
+    } catch (error) {
+      // En caso de error, por defecto los brokers no pueden descargar
+      setBrokerCanDownload(false);
+      setBrokerPermissionsLoaded(true);
+    }
+  };
 
   // Función para obtener el icono según el tipo
   const getIcon = () => {
@@ -123,13 +169,18 @@ const FileItem: React.FC<FileItemProps> = ({
         }
         break;
       case 'download':
-        onDownload?.(id);
+        if (canDownload) {
+          onDownload?.(id);
+        }
         break;
       case 'rename':
         onRename?.(id);
         break;
       case 'delete':
         onDelete?.(id);
+        break;
+      case 'permissions':
+        onManagePermissions?.(id);
         break;
     }
   };
@@ -163,10 +214,25 @@ const FileItem: React.FC<FileItemProps> = ({
 
         {/* Información principal */}
         <div className="flex-1 min-w-0">
-          {/* Nombre */}
-          <h3 className={`text-sm font-medium ${text} truncate mb-1`}>
-            {name}
-          </h3>
+          {/* Nombre con indicadores de permisos */}
+          <div className="flex items-center gap-2 mb-1">
+            <h3 className={`text-sm font-medium ${text} truncate`}>
+              {name}
+            </h3>
+            {type === 'file' && brokerPermissionsLoaded && ['admin', 'admin_comercial', 'admin_operaciones'].includes(userRole!) && (
+              <div className="flex items-center gap-1">
+                {brokerCanDownload ? (
+                  <div title="Los brokers pueden descargar este archivo">
+                    <Unlock size={12} className="text-green-500" />
+                  </div>
+                ) : (
+                  <div title="Los brokers NO pueden descargar este archivo">
+                    <Lock size={12} className="text-red-500" />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
           
           {/* Información adicional */}
           <div className={`flex items-center gap-4 text-xs ${textSecondary}`}>
@@ -205,13 +271,13 @@ const FileItem: React.FC<FileItemProps> = ({
                   {type === 'folder' ? 'Abrir' : 'Ver'}
                 </button>
                 
-                {type === 'file' && onDownload && (
+                {type === 'file' && onDownload && canDownload && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       handleAction('download');
                     }}
-                    className={`w-full px-3 py-2 text-left text-sm ${text} ${hoverBg} flex items-center transition-colors`}
+                    className={`w-full px-3 py-2 text-left text-sm flex items-center transition-colors ${text} ${hoverBg}`}
                   >
                     <Download size={14} className={`mr-2 ${textMuted}`} />
                     Descargar
@@ -228,6 +294,19 @@ const FileItem: React.FC<FileItemProps> = ({
                   >
                     <Edit size={14} className={`mr-2 ${textMuted}`} />
                     Renombrar
+                  </button>
+                )}
+
+                {isAdmin && onManagePermissions && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleAction('permissions');
+                    }}
+                    className={`w-full px-3 py-2 text-left text-sm ${text} ${hoverBg} flex items-center transition-colors`}
+                  >
+                    <Shield size={14} className={`mr-2 ${textMuted}`} />
+                    Permisos
                   </button>
                 )}
                 

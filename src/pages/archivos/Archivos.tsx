@@ -11,6 +11,7 @@ import UploadFileModal from '../../components/files/UploadFileModal';
 import RenameItemModal from '../../components/files/RenameItemModal';
 import DeleteItemModal from '../../components/files/DeleteItemModal';
 import FilePreviewModal from '../../components/files/FilePreviewModal';
+import FilePermissionModal from '../../components/files/FilePermissionModal';
 import { useUserProfileDrawer } from '../../hooks/useUserProfileDrawer';
 import { usePermissions } from '../../hooks/usePermissions';
 import { FileService } from '../../services/fileService';
@@ -41,6 +42,7 @@ const Archivos: React.FC = () => {
   const [isUploadFileModalOpen, setIsUploadFileModalOpen] = useState(false);
   const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isPermissionModalOpen, setIsPermissionModalOpen] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
   
   // Estados para modales de acciones
@@ -49,6 +51,9 @@ const Archivos: React.FC = () => {
     name: string;
     type: 'file' | 'folder';
   } | null>(null);
+
+  // Estado para archivo seleccionado para permisos
+  const [selectedFileForPermissions, setSelectedFileForPermissions] = useState<FileItem | null>(null);
 
   // Estados para vista previa
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
@@ -141,7 +146,7 @@ const Archivos: React.FC = () => {
     }
   };
 
-  const handleUploadFileSubmit = async (file: File) => {
+  const handleUploadFileSubmit = async (file: File, permissions?: { [role: string]: boolean }) => {
     setModalLoading(true);
     try {
       const result = await FileService.uploadFile(
@@ -155,6 +160,33 @@ const Archivos: React.FC = () => {
       if (result.error) {
         // Aquí podrías mostrar un toast de error
       } else {
+        // Si se configuraron permisos personalizados, aplicarlos
+        if (permissions && result.data) {
+          try {
+            const { FilePermissionService } = await import('../../services/filePermissionService');
+            const { supabase } = await import('../../config/supabase');
+            
+            // Obtener el usuario actual
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+              // Convertir permisos al formato esperado
+              const permissionsToUpdate = Object.entries(permissions).map(([role, canDownload]) => ({
+                role,
+                can_download: canDownload
+              }));
+
+              await FilePermissionService.updateFilePermissions(
+                result.data.id,
+                permissionsToUpdate,
+                user.id
+              );
+            }
+          } catch (permError) {
+            console.error('Error configurando permisos:', permError);
+            // Continuar aunque falle la configuración de permisos
+          }
+        }
+        
         // Recargar contenido de la carpeta actual
         await loadFolderContents(currentPath);
         setIsUploadFileModalOpen(false);
@@ -277,6 +309,20 @@ const Archivos: React.FC = () => {
     setIsPreviewModalOpen(true);
   };
 
+  const handleItemManagePermissions = (id: string) => {
+    // Encontrar el archivo
+    const file = files.find(f => f.id === id);
+    if (file) {
+      setSelectedFileForPermissions(file);
+      setIsPermissionModalOpen(true);
+    }
+  };
+
+  const handlePermissionsChange = () => {
+    // Recargar contenido de la carpeta actual para actualizar indicadores
+    loadFolderContents(currentPath);
+  };
+
   // Handlers para modales de acciones
   const handleRenameSubmit = async (newName: string) => {
     if (!selectedItem) return;
@@ -369,6 +415,7 @@ const Archivos: React.FC = () => {
                 onItemRename={handleItemRename}
                 onItemDelete={handleItemDelete}
                 onItemPreview={handleItemPreview}
+                onItemManagePermissions={handleItemManagePermissions}
                 loading={loading}
                 canEdit={can('archivos', 'edit')}
                 canDelete={can('archivos', 'delete')}
@@ -437,6 +484,25 @@ const Archivos: React.FC = () => {
         fileName={previewFile?.name || ''}
         fileType={previewFile?.mimeType || ''}
         fileSize={previewFile?.size || 0}
+      />
+
+      <FilePermissionModal
+        isOpen={isPermissionModalOpen}
+        onClose={() => {
+          setIsPermissionModalOpen(false);
+          setSelectedFileForPermissions(null);
+        }}
+        file={selectedFileForPermissions || {
+          id: '',
+          name: '',
+          type: 'file',
+          size: 0,
+          path: '',
+          created_at: '',
+          updated_at: '',
+          mime_type: ''
+        }}
+        onPermissionsChange={handlePermissionsChange}
       />
     </div>
   );

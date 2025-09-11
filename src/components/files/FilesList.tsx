@@ -3,6 +3,7 @@ import { FolderOpen } from 'lucide-react';
 import FileItem from './FileItem';
 import type { FileItem as FileItemType, FolderItem } from '../../types/files';
 import { useThemeClasses } from '../../hooks/useThemeClasses';
+import { useAuth } from '../../hooks/useAuth';
 
 interface FilesListProps {
   files: FileItemType[];
@@ -12,6 +13,7 @@ interface FilesListProps {
   onItemRename?: (id: string) => void;
   onItemDelete?: (id: string) => void;
   onItemPreview?: (id: string, name: string, mimeType: string, size: number) => void;
+  onItemManagePermissions?: (id: string) => void;
   loading?: boolean;
   canEdit?: boolean;
   canDelete?: boolean;
@@ -26,6 +28,7 @@ const FilesList: React.FC<FilesListProps> = ({
   onItemRename,
   onItemDelete,
   onItemPreview,
+  onItemManagePermissions,
   loading = false,
   canEdit = true,
   canDelete = true,
@@ -33,6 +36,7 @@ const FilesList: React.FC<FilesListProps> = ({
 }) => {
   const { text, textSecondary, textMuted } = useThemeClasses();
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const { user } = useAuth();
 
   // Combinar carpetas y archivos, carpetas primero
   const allItems = [...folders, ...files];
@@ -43,6 +47,9 @@ const FilesList: React.FC<FilesListProps> = ({
       onItemOpen(id, item.type);
     }
   };
+
+  // Verificar si el usuario es admin
+  const isAdmin = user?.rol && ['admin', 'admin_comercial', 'admin_operaciones'].includes(user.rol);
 
   if (loading) {
     return (
@@ -89,8 +96,11 @@ const FilesList: React.FC<FilesListProps> = ({
           onRename={canEdit ? onItemRename : undefined}
           onDelete={canDelete ? onItemDelete : undefined}
           onPreview={onItemPreview}
+          onManagePermissions={onItemManagePermissions}
           openMenuId={openMenuId}
           setOpenMenuId={setOpenMenuId}
+          userRole={user?.rol}
+          isAdmin={isAdmin}
         />
       ))}
       

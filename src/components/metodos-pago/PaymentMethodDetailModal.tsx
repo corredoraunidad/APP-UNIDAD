@@ -7,6 +7,10 @@ import {
   DollarSign
 } from 'lucide-react';
 import { useThemeClasses } from '../../hooks/useThemeClasses';
+import EntityAttachments from '../files/EntityAttachments';
+import FilePreviewModal from '../files/FilePreviewModal';
+import { usePermissions } from '../../hooks/usePermissions';
+import { PaymentMethodsService } from '../../services/paymentMethodService';
 import type { PaymentMethod } from '../../types/metodos-pago';
 
 interface PaymentMethodDetailModalProps {
@@ -22,6 +26,9 @@ const PaymentMethodDetailModal: React.FC<PaymentMethodDetailModalProps> = ({
 }) => {
   const { modalBg, text, textSecondary, textMuted, border, bgSurface, bgCard } = useThemeClasses();
   const [bankDataCopied, setBankDataCopied] = useState(false);
+  const { can } = usePermissions();
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [previewFile, setPreviewFile] = useState<{ id: string; name: string; type: string; size: number } | null>(null);
 
   if (!isOpen || !paymentMethod) return null;
 
@@ -70,6 +77,7 @@ const PaymentMethodDetailModal: React.FC<PaymentMethodDetailModalProps> = ({
           {/* Content */}
           <div className="p-6 overflow-y-auto max-h-[calc(100vh-200px)]">
             <div className="space-y-8">
+              
               
               {/* Sección: Enlaces de Pago */}
               {paymentMethod.payment_links && paymentMethod.payment_links.length > 0 && (
@@ -164,6 +172,16 @@ const PaymentMethodDetailModal: React.FC<PaymentMethodDetailModalProps> = ({
                         </button>
                       </div>
                     </div>
+      {isPreviewOpen && previewFile && (
+        <FilePreviewModal
+          isOpen={isPreviewOpen}
+          onClose={() => setIsPreviewOpen(false)}
+          fileId={previewFile.id}
+          fileName={previewFile.name}
+          fileType={previewFile.type}
+          fileSize={previewFile.size}
+        />
+      )}
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -304,6 +322,34 @@ Número de Cuenta: ${paymentMethod.account_number}${paymentMethod.contact_email 
                   </div>
                 </div>
               )}
+              {/* Sección: Adjuntos (al final) */}
+              <div className={`${bgSurface} rounded-xl p-6`}>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center">
+                    <ExternalLink className={`w-6 h-6 ${textSecondary} mr-3`} />
+                    <h3 className={`text-xl font-semibold ${text}`}>Adjuntos</h3>
+                  </div>
+                </div>
+                <EntityAttachments
+                  entityId={paymentMethod.id}
+                  entityName={paymentMethod.company_name}
+                  attachmentIds={paymentMethod.paymetmethodaAttachments || []}
+                  basePath="/instructivos-metodos-pago"
+                  canEdit={can('metodos_pago', 'edit')}
+                  onPersist={async (id, ids) => {
+                    const res = await PaymentMethodsService.updateAttachments(id, ids);
+                    return { error: res.error || null };
+                  }}
+                  onAttachmentsChange={(ids) => {
+                    (paymentMethod as any).paymetmethodaAttachments = ids;
+                  }}
+                  onPreviewFile={(file) => {
+                    setPreviewFile({ id: file.id, name: file.name, type: file.mime_type || 'application/pdf', size: file.size || 0 });
+                    setIsPreviewOpen(true);
+                  }}
+                />
+              </div>
+
             </div>
           </div>
         </div>

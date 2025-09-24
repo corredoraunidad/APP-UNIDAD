@@ -220,16 +220,25 @@ export class FileService {
       }
 
       // Verificar si la carpeta ya existe
-      const { data: existingFolder } = await supabase
+      const { data: existingFolderAny } = await supabase
         .from('files')
-        .select('id')
+        .select('id, is_deleted')
         .eq('type', 'folder')
         .eq('path', folderPath)
-        .eq('is_deleted', false)
         .single();
 
-      if (existingFolder) {
-        return { success: true, folderId: existingFolder.id, error: null };
+      if (existingFolderAny) {
+        // Si existe y está eliminada lógicamente, restaurar
+        if (existingFolderAny.is_deleted === true) {
+          const { error: undeleteRootError } = await supabase
+            .from('files')
+            .update({ is_deleted: false })
+            .eq('id', existingFolderAny.id);
+          if (undeleteRootError) {
+            return { success: false, folderId: null, error: `No se pudo restaurar carpeta ${folderPath}: ${undeleteRootError.message}` };
+          }
+        }
+        return { success: true, folderId: existingFolderAny.id, error: null };
       }
 
       // Crear la carpeta paso a paso
@@ -241,16 +250,25 @@ export class FileService {
         currentPath = currentPath === '' ? `/${part}` : `${currentPath}/${part}`;
         
         // Verificar si esta parte del path ya existe
-        const { data: existingPart } = await supabase
+        const { data: existingPartAny } = await supabase
           .from('files')
-          .select('id')
+          .select('id, is_deleted')
           .eq('type', 'folder')
           .eq('path', currentPath)
-          .eq('is_deleted', false)
           .single();
 
-        if (existingPart) {
-          parentId = existingPart.id;
+        if (existingPartAny) {
+          // Restaurar si estaba eliminada
+          if (existingPartAny.is_deleted === true) {
+            const { error: undeletePartError } = await supabase
+              .from('files')
+              .update({ is_deleted: false })
+              .eq('id', existingPartAny.id);
+            if (undeletePartError) {
+              return { success: false, folderId: null, error: `No se pudo restaurar carpeta ${currentPath}: ${undeletePartError.message}` };
+            }
+          }
+          parentId = existingPartAny.id;
         } else {
           // Crear esta parte de la carpeta
           const { data: newFolder, error: createError } = await supabase
@@ -302,21 +320,13 @@ export class FileService {
 
       const newPath = parentPath === '/' ? `/${fileName}` : `${parentPath}/${fileName}`;
       
-      // Verificar que no existe un archivo con el mismo nombre en la misma ubicación
-      const { data: existingFile } = await supabase
+      // Verificar si ya existe un archivo con el mismo path (incluyendo eliminados lógicamente)
+      const { data: existingAny } = await supabase
         .from('files')
-        .select('id')
+        .select('id, is_deleted')
         .eq('type', 'file')
         .eq('path', newPath)
-        .eq('is_deleted', false)
         .single();
-
-      if (existingFile) {
-        return { 
-          data: null, 
-          error: 'Ya existe un archivo con ese nombre en esta ubicación' 
-        };
-      }
 
       // Obtener el ID del usuario actual
       const { data: { user } } = await supabase.auth.getUser();
@@ -327,19 +337,12 @@ export class FileService {
         };
       }
 
-      // Asegurar que la carpeta padre existe y obtener su ID
-      let parentId = null;
-      if (parentPath !== '/') {
-        const { success, folderId, error: folderError } = await this.ensureFolderExists(parentPath);
-        
-        if (!success) {
-          return { 
-            data: null, 
-            error: folderError || 'Error creando carpeta padre' 
-          };
-        }
-        
-        parentId = folderId;
+      // Si existe y no está eliminado, bloquear por duplicado
+      if (existingAny && existingAny.is_deleted === false) {
+        return { 
+          data: null, 
+          error: 'Ya existe un archivo con ese nombre en esta ubicación' 
+        };
       }
 
       // Generar un nombre único para el archivo en storage
@@ -360,6 +363,56 @@ export class FileService {
           data: null, 
           error: `Error al subir archivo: ${uploadError.message}` 
         };
+      }
+
+      // Caso 1: Existe registro eliminado lógicamente → restaurar y actualizar
+      if (existingAny && existingAny.is_deleted === true) {
+        const { data: updatedFile, error: updateErr } = await supabase
+          .from('files')
+          .update({
+            size: fileSize,
+            mime_type: mimeType,
+            storage_path: storagePath,
+            is_deleted: false,
+          })
+          .eq('id', existingAny.id)
+          .select()
+          .single();
+
+        if (updateErr || !updatedFile) {
+          // rollback en storage si falla actualización en BD
+          await supabase.storage.from('files').remove([storagePath]);
+          return { data: null, error: updateErr?.message || 'Error al restaurar archivo' };
+        }
+
+        const fileItem: FileItem = {
+          id: updatedFile.id,
+          name: updatedFile.name,
+          type: 'file',
+          size: updatedFile.size || 0,
+          created_at: updatedFile.created_at,
+          updated_at: updatedFile.updated_at,
+          path: updatedFile.path,
+          mime_type: updatedFile.mime_type,
+          storage_path: updatedFile.storage_path,
+        };
+
+        return { data: fileItem, error: null };
+      }
+
+      // Caso 2: No existe → crear nuevo registro
+      // Asegurar que la carpeta padre existe y obtener su ID
+      let parentId = null;
+      if (parentPath !== '/') {
+        const { success, folderId, error: folderError } = await this.ensureFolderExists(parentPath);
+        
+        if (!success) {
+          // rollback en storage si falla crear/asegurar carpeta
+          await supabase.storage.from('files').remove([storagePath]);
+          return { data: null, error: folderError || 'Error creando carpeta padre' };
+        }
+        
+        parentId = folderId;
       }
 
       // Crear el registro del archivo en la base de datos

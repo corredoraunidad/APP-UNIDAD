@@ -146,8 +146,14 @@ const AsistenciasSiniestros: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleCloseModal = () => {
+  const handleCloseModal = async () => {
     setIsModalOpen(false);
+    if (selectedCompany) {
+      const { company: refreshed, error } = await AsistenciasSiniestrosService.getCompanyById(selectedCompany.id);
+      if (!error && refreshed) {
+        setCompanies(prev => prev.map(c => c.id === refreshed.id ? refreshed : c));
+      }
+    }
     setSelectedCompany(null);
   };
 

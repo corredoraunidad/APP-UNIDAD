@@ -32,6 +32,9 @@ export interface PaymentMethod {
   is_active: boolean;
   created_by?: string;
   updated_by?: string;
+
+  // Adjuntos (IDs de tabla files)
+  paymetmethodaAttachments?: string[];
 }
 
 export interface PaymentMethodFormData {
@@ -44,4 +47,6 @@ export interface PaymentMethodFormData {
   contact_email?: string;
   usd_account_number?: string;
   usd_bank_name?: string;
+  // Adjuntos a enviar al crear
+  paymetmethodaAttachments?: string[];
 }

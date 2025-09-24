@@ -1,90 +1,73 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  FileText, 
-  Upload, 
-  Download, 
-  Eye, 
-  Trash2, 
-  
-} from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { FileText, Upload, Download, Eye, Trash2 } from 'lucide-react';
 import { useThemeClasses } from '../../hooks/useThemeClasses';
-import { usePermissions } from '../../hooks/usePermissions';
 import { FileService } from '../../services/fileService';
-import { AsistenciasSiniestrosService } from '../../services/asistenciasSiniestrosService';
+import { useChangePasswordModal } from '../../contexts/ModalContext';
 import type { FileItem } from '../../types/files';
 
-interface WebsiteAttachmentsProps {
-  companyId: string;
-  companyName: string;
+interface EntityAttachmentsProps {
+  entityId: string;
+  entityName: string;
   attachmentIds: string[];
-  onAttachmentsChange: (newAttachmentIds: string[]) => void;
+  onAttachmentsChange: (newIds: string[]) => void;
+  onPersist: (entityId: string, ids: string[]) => Promise<{ error?: string | null }>;
   onPreviewFile: (file: FileItem) => void;
+  basePath: string; // e.g. '/instructivos-metodos-pago'
+  canEdit?: boolean;
 }
 
-const WebsiteAttachments: React.FC<WebsiteAttachmentsProps> = ({
-  companyId,
-  companyName,
+const EntityAttachments: React.FC<EntityAttachmentsProps> = ({
+  entityId,
+  entityName,
   attachmentIds,
   onAttachmentsChange,
-  onPreviewFile
+  onPersist,
+  basePath,
+  canEdit = true
 }) => {
   const { bgCard, text, textSecondary, textMuted, border, bgSurface } = useThemeClasses();
-  const { isBroker } = usePermissions();
+  const { openFilePreview } = useChangePasswordModal();
   const [attachments, setAttachments] = useState<FileItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
 
-  // Función para limpiar el nombre de la compañía para usar en rutas
-  const cleanCompanyName = (name: string): string => {
+  const cleanName = (name: string): string => {
     return name
       .toLowerCase()
-      .replace(/[^a-z0-9\s]/g, '') // Remover caracteres especiales
-      .replace(/\s+/g, '-') // Reemplazar espacios con guiones
-      .replace(/-+/g, '-') // Remover guiones múltiples
+      .replace(/[^a-z0-9\s]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
       .trim();
   };
 
-  // Cargar archivos adjuntos
   useEffect(() => {
-    const loadAttachments = async () => {
-      if (attachmentIds.length === 0) {
+    const load = async () => {
+      if (!attachmentIds || attachmentIds.length === 0) {
         setAttachments([]);
         return;
       }
-
       setIsLoading(true);
       try {
-        const { data: files, error } = await FileService.getFilesByIds(attachmentIds);
-        
+        const { data, error } = await FileService.getFilesByIds(attachmentIds);
         if (error) {
-          console.error('Error cargando archivos adjuntos:', error);
           setAttachments([]);
         } else {
-          setAttachments(files || []);
+          setAttachments(data || []);
         }
-      } catch (error) {
-        console.error('Error cargando archivos adjuntos:', error);
-        setAttachments([]);
       } finally {
         setIsLoading(false);
       }
     };
+    load();
+  }, [attachmentIds, entityId]);
 
-    loadAttachments();
-  }, [attachmentIds, companyId]);
-
-  // Manejar subida de archivo
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-
-    // Validar tipo de archivo
     if (file.type !== 'application/pdf') {
       alert('Solo se permiten archivos PDF');
       return;
     }
-
-    // Validar tamaño (máximo 10MB)
     if (file.size > 10 * 1024 * 1024) {
       alert('El archivo no puede ser mayor a 10MB');
       return;
@@ -92,119 +75,78 @@ const WebsiteAttachments: React.FC<WebsiteAttachmentsProps> = ({
 
     setIsUploading(true);
     try {
-      // Subir archivo usando FileService con nombre limpio y ruta simplificada
       const { data: uploadedFile, error } = await FileService.uploadFile(
         file.name,
         file,
         file.type,
         file.size,
-        `/instructivos-asistencias/${cleanCompanyName(companyName)}`
+        `${basePath}/${cleanName(entityName)}`
       );
-      
-      if (error) {
-        throw new Error(error);
-      }
-
-              if (uploadedFile) {
-          const newAttachmentIds = [...attachmentIds, uploadedFile.id];
-          
-          // Persistir el cambio en la base de datos
-          const { error: updateError } = await AsistenciasSiniestrosService.updateWebsiteAttachments(
-            companyId, 
-            newAttachmentIds
-          );
-          
-          if (updateError) {
-            // Si falla la persistencia, eliminar el archivo subido
-            await FileService.deleteItem(uploadedFile.id);
-            alert('Error al guardar el archivo');
-            return;
-          }
-          
-          // Actualizar el estado local
-          onAttachmentsChange(newAttachmentIds);
+      if (error) throw new Error(error);
+      if (uploadedFile) {
+        const newIds = [...attachmentIds, uploadedFile.id];
+        const { error: persistError } = await onPersist(entityId, newIds);
+        if (persistError) {
+          await FileService.deleteItem(uploadedFile.id);
+          alert('Error al guardar el archivo');
+          return;
         }
-      
-      // Limpiar input
+        // Actualizar inmediatamente la UI
+        setAttachments(prev => {
+          const exists = prev.some(f => f.id === uploadedFile.id);
+          return exists ? prev : [...prev, uploadedFile];
+        });
+        onAttachmentsChange(newIds);
+      }
       event.target.value = '';
-    } catch (error) {
-      console.error('Error subiendo archivo:', error);
+    } catch (err) {
+      console.error('Error subiendo archivo:', err);
       alert('Error al subir el archivo');
     } finally {
       setIsUploading(false);
     }
   };
 
-  // Eliminar archivo
   const handleDeleteFile = async (fileId: string) => {
     try {
-      const newAttachmentIds = attachmentIds.filter(id => id !== fileId);
-      
-      // 1) Quitar referencia en la compañía
-      const { error } = await AsistenciasSiniestrosService.updateWebsiteAttachments(
-        companyId, 
-        newAttachmentIds
-      );
-      
+      const newIds = attachmentIds.filter(id => id !== fileId);
+      const { error } = await onPersist(entityId, newIds);
       if (error) {
         alert('Error al eliminar el archivo');
         return;
       }
-
-      // 2) Eliminar el archivo físicamente del módulo de archivos
       const { error: deleteError } = await FileService.deleteItem(fileId);
       if (deleteError) {
-        // Rollback: restaurar el ID en la compañía si falla la eliminación física
-        await AsistenciasSiniestrosService.updateWebsiteAttachments(companyId, attachmentIds);
+        await onPersist(entityId, attachmentIds);
         alert('No se pudo eliminar el archivo físicamente. Se revirtió el cambio.');
         return;
       }
-
-      // 3) Actualizar el estado local
-      onAttachmentsChange(newAttachmentIds);
-    } catch (error) {
-      console.error('Error eliminando archivo:', error);
+      // Actualizar inmediatamente la UI
+      setAttachments(prev => prev.filter(f => f.id !== fileId));
+      onAttachmentsChange(newIds);
+    } catch (err) {
+      console.error('Error eliminando archivo:', err);
       alert('Error al eliminar el archivo');
     }
   };
 
-  // Descargar archivo
   const handleDownloadFile = async (file: FileItem) => {
-    try {
-      const { data: downloadUrl, error } = await FileService.getFileDownloadUrl(file.id);
-      
-      if (error) {
-        alert('Error al obtener URL de descarga');
-        return;
-      }
-
-      if (downloadUrl) {
-        // Crear un enlace temporal para descargar
-        const link = document.createElement('a');
-        link.href = downloadUrl;
-        link.download = file.name;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      }
-    } catch (error) {
-      console.error('Error descargando archivo:', error);
-      alert('Error al descargar el archivo');
+    const { data: url, error } = await FileService.getFileDownloadUrl(file.id);
+    if (error || !url) {
+      alert('Error al obtener URL de descarga');
+      return;
     }
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = file.name;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
-  // Vista previa archivo
   const handlePreviewFile = (file: FileItem) => {
-    onPreviewFile(file);
-  };
-
-  // Formatear tamaño de archivo
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    // Usar modal global
+    openFilePreview({ id: file.id, name: file.name, type: file.mime_type || 'application/pdf', size: file.size || 0 });
   };
 
   return (
@@ -212,15 +154,14 @@ const WebsiteAttachments: React.FC<WebsiteAttachmentsProps> = ({
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center">
           <FileText className={`w-6 h-6 ${textSecondary} mr-3`} />
-          <h3 className={`text-xl font-semibold ${text}`}>Instructivos</h3>
+          <h3 className={`text-xl font-semibold ${text}`}>Adjuntos</h3>
         </div>
         <span className={`text-sm ${textMuted}`}>
           {attachments.length} archivo{attachments.length !== 1 ? 's' : ''}
         </span>
       </div>
 
-      {/* Botón de subida - Solo para admins */}
-      {!isBroker() && (
+      {canEdit && (
         <div className="mb-4">
           <label className="cursor-pointer">
             <input
@@ -242,7 +183,6 @@ const WebsiteAttachments: React.FC<WebsiteAttachmentsProps> = ({
         </div>
       )}
 
-      {/* Lista de archivos */}
       {isLoading ? (
         <div className={`text-center py-8 ${textMuted}`}>
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
@@ -257,9 +197,7 @@ const WebsiteAttachments: React.FC<WebsiteAttachmentsProps> = ({
                   <FileText className="w-5 h-5 text-red-500 mr-3 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className={`font-medium ${text} truncate`}>{file.name}</p>
-                    <p className={`text-sm ${textMuted}`}>
-                      {formatFileSize(file.size)}
-                    </p>
+                    <p className={`text-sm ${textMuted}`}>{(file.size / 1024).toFixed(1)} KB</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2 ml-4">
@@ -277,7 +215,7 @@ const WebsiteAttachments: React.FC<WebsiteAttachmentsProps> = ({
                   >
                     <Download className="w-4 h-4" />
                   </button>
-                  {!isBroker() && (
+                  {canEdit && (
                     <button
                       onClick={() => handleDeleteFile(file.id)}
                       className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
@@ -294,14 +232,14 @@ const WebsiteAttachments: React.FC<WebsiteAttachmentsProps> = ({
       ) : (
         <div className={`text-center py-8 ${textMuted}`}>
           <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
-          <p>No hay instructivos disponibles</p>
-          {!isBroker() && (
-            <p className="text-sm mt-1">Haz clic en "Agregar Instructivo" para subir archivos PDF</p>
-          )}
+          <p>No hay archivos adjuntos</p>
+          {canEdit && <p className="text-sm mt-1">Haz clic en "Agregar Instructivo" para subir archivos PDF</p>}
         </div>
       )}
     </div>
   );
 };
 
-export default WebsiteAttachments;
+export default EntityAttachments;
+
+

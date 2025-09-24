@@ -19,7 +19,11 @@ export class PaymentMethodsService {
         return { paymentMethods: [], error: error.message };
       }
 
-      return { paymentMethods: data || [] };
+      const mapped: PaymentMethod[] = (data || []).map((pm: any) => ({
+        ...pm,
+        paymetmethodaAttachments: pm.paymetmethoda_attachments || []
+      }));
+      return { paymentMethods: mapped };
     } catch (error: any) {
       console.error('Error in getAll:', error);
       return { paymentMethods: [], error: error.message };
@@ -42,7 +46,11 @@ export class PaymentMethodsService {
         return { error: error.message };
       }
 
-      return { paymentMethod: data };
+      const mapped: PaymentMethod = {
+        ...data,
+        paymetmethodaAttachments: data.paymetmethoda_attachments || []
+      };
+      return { paymentMethod: mapped };
     } catch (error: any) {
       console.error('Error in getById:', error);
       return { error: error.message };
@@ -60,6 +68,7 @@ export class PaymentMethodsService {
         .from('payment_methods')
         .insert([{
           ...data,
+          paymetmethoda_attachments: data.paymetmethodaAttachments || [],
           is_active: true, // Establecer como activo por defecto
           created_by: user?.user?.id,
           updated_by: user?.user?.id
@@ -72,7 +81,11 @@ export class PaymentMethodsService {
         return { error: error.message };
       }
 
-      return { paymentMethod: result };
+      const mapped: PaymentMethod = {
+        ...result,
+        paymetmethodaAttachments: result.paymetmethoda_attachments || []
+      };
+      return { paymentMethod: mapped };
     } catch (error: any) {
       console.error('Error in create:', error);
       return { error: error.message };
@@ -104,6 +117,25 @@ export class PaymentMethodsService {
     } catch (error: any) {
       console.error('Error in update:', error);
       return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Actualizar adjuntos (IDs de files) del método de pago
+   */
+  static async updateAttachments(id: string, attachmentIds: string[]): Promise<{ error?: string }> {
+    try {
+      const { error } = await supabase
+        .from('payment_methods')
+        .update({ paymetmethoda_attachments: attachmentIds })
+        .eq('id', id);
+
+      if (error) {
+        return { error: error.message };
+      }
+      return {};
+    } catch (error: any) {
+      return { error: error.message };
     }
   }
 

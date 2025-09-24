@@ -6,6 +6,10 @@ import {
 } from 'lucide-react';
 import { useThemeClasses } from '../../hooks/useThemeClasses';
 import type { PaymentMethod, PaymentMethodFormData, PaymentLink } from '../../types/metodos-pago';
+import EntityAttachments from '../files/EntityAttachments';
+import FilePreviewModal from '../files/FilePreviewModal';
+import { PaymentMethodsService } from '../../services/paymentMethodService';
+import { usePermissions } from '../../hooks/usePermissions';
 
 interface PaymentMethodFormModalProps {
   isOpen: boolean;
@@ -21,7 +25,10 @@ const PaymentMethodFormModal: React.FC<PaymentMethodFormModalProps> = ({
   paymentMethod = null,
 }) => {
   const { modalBg, text, textSecondary, textMuted, border, inputBg, inputBorder, inputText, inputPlaceholder, bgSurface } = useThemeClasses();
+  const { can } = usePermissions();
   const isEditing = !!paymentMethod;
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [previewFile, setPreviewFile] = useState<{ id: string; name: string; type: string; size: number } | null>(null);
 
   // Estado del formulario
   const [formData, setFormData] = useState<PaymentMethodFormData>({
@@ -34,6 +41,7 @@ const PaymentMethodFormModal: React.FC<PaymentMethodFormModalProps> = ({
     contact_email: '',
     usd_account_number: '',
     usd_bank_name: '',
+    paymetmethodaAttachments: []
   });
 
   const [loading, setLoading] = useState(false);
@@ -67,6 +75,7 @@ const PaymentMethodFormModal: React.FC<PaymentMethodFormModalProps> = ({
           contact_email: paymentMethod.contact_email || '',
           usd_account_number: paymentMethod.usd_account_number || '',
           usd_bank_name: paymentMethod.usd_bank_name || '',
+          paymetmethodaAttachments: paymentMethod.paymetmethodaAttachments || []
         });
       } else {
         // Modo creación
@@ -80,6 +89,7 @@ const PaymentMethodFormModal: React.FC<PaymentMethodFormModalProps> = ({
           contact_email: '',
           usd_account_number: '',
           usd_bank_name: '',
+          paymetmethodaAttachments: []
         });
       }
       setError(null);
@@ -419,6 +429,50 @@ const PaymentMethodFormModal: React.FC<PaymentMethodFormModalProps> = ({
                   </div>
                 </div>
               </div>
+
+              {/* Adjuntos de Método de Pago */}
+              {paymentMethod ? (
+                <EntityAttachments
+                  entityId={paymentMethod.id}
+                  entityName={paymentMethod.company_name}
+                  attachmentIds={paymentMethod.paymetmethodaAttachments || []}
+                  basePath="/instructivos-metodos-pago"
+                  canEdit={can('metodos_pago', 'edit')}
+                  onPersist={async (id, ids) => {
+                    const res = await PaymentMethodsService.updateAttachments(id, ids);
+                    return { error: res.error || null };
+                  }}
+                  onAttachmentsChange={(ids) => {
+                    if (!paymentMethod) return;
+                    // Refrescar el objeto en memoria para re-renderizar
+                    (paymentMethod as any).paymetmethodaAttachments = ids;
+                  }}
+                  onPreviewFile={(file) => {
+                    setPreviewFile({ id: file.id, name: file.name, type: file.mime_type || 'application/pdf', size: file.size || 0 });
+                    setIsPreviewOpen(true);
+                  }}
+                />
+              ) : (
+                <EntityAttachments
+                  entityId={formData.company_name || 'nuevo'}
+                  entityName={formData.company_name || 'nuevo'}
+                  attachmentIds={formData.paymetmethodaAttachments || []}
+                  basePath="/instructivos-metodos-pago"
+                  canEdit={can('metodos_pago', 'edit')}
+                  onPersist={async (_id, ids) => {
+                    // En creación: mantener los IDs en el formulario. Se guardan en create()
+                    setFormData(prev => ({ ...prev, paymetmethodaAttachments: ids }));
+                    return { error: null };
+                  }}
+                  onAttachmentsChange={(ids) => {
+                    setFormData(prev => ({ ...prev, paymetmethodaAttachments: ids }));
+                  }}
+                  onPreviewFile={(file) => {
+                    setPreviewFile({ id: file.id, name: file.name, type: file.mime_type || 'application/pdf', size: file.size || 0 });
+                    setIsPreviewOpen(true);
+                  }}
+                />
+              )}
             </div>
 
             {/* Footer */}
@@ -449,6 +503,18 @@ const PaymentMethodFormModal: React.FC<PaymentMethodFormModalProps> = ({
           </form>
         </div>
       </div>
+
+      {/* Modal de vista previa */}
+      {isPreviewOpen && previewFile && (
+        <FilePreviewModal
+          isOpen={isPreviewOpen}
+          onClose={() => setIsPreviewOpen(false)}
+          fileId={previewFile.id}
+          fileName={previewFile.name}
+          fileType={previewFile.type}
+          fileSize={previewFile.size}
+        />
+      )}
     </>
   );
 };

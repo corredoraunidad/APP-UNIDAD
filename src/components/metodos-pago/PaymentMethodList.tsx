@@ -1,5 +1,5 @@
 import React from 'react';
-import { CreditCard, ExternalLink, Trash2, DollarSign } from 'lucide-react';
+import { CreditCard, ExternalLink, Trash2, DollarSign, Edit } from 'lucide-react';
 import type { PaymentMethod } from '../../types/metodos-pago';
 import { useThemeClasses } from '../../hooks/useThemeClasses';
 
@@ -119,6 +119,19 @@ const PaymentMethodList: React.FC<PaymentMethodListProps> = ({
               </p>
             </div>
             
+            <div className="flex items-center gap-1">
+            {canEdit && onEdit && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit(paymentMethod);
+                }}
+                className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                title="Editar método de pago"
+              >
+                <Edit className="w-4 h-4" />
+              </button>
+            )}
             {canEdit && onDelete && (
               <button
                 onClick={(e) => {
@@ -131,6 +144,7 @@ const PaymentMethodList: React.FC<PaymentMethodListProps> = ({
                 <Trash2 className="w-4 h-4" />
               </button>
             )}
+            </div>
           </div>
 
           {/* Información bancaria */}

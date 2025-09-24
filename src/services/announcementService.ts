@@ -32,10 +32,13 @@ export class AnnouncementService {
       
       let query = supabase
         .from('announcements')
-        .select(`
+        .select(
+          `
           *,
           announcement_recipients!left(user_id, is_read, read_at)
-        `)
+        `,
+          { count: 'exact' }
+        )
         .eq('announcement_recipients.user_id', user?.id)
         .order('created_at', { ascending: false });
 
@@ -68,7 +71,7 @@ export class AnnouncementService {
       }
 
       const announcements = data || [];
-      const total = count || 0;
+      const total = typeof count === 'number' ? count : announcements.length;
       const hasMore = from + limit < total;
 
       // Procesar información de lectura para el usuario actual

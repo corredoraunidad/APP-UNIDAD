@@ -183,7 +183,7 @@ const Dashboard = () => {
               {/* Cards de módulos */}
               {loading ? (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  {[1, 2, 3].map((index) => (
+                  {[1, 2, 3, 4, 5].map((index) => (
                     <div key={index} className={`bg-white rounded-xl shadow-md p-8 animate-pulse`}>
                       <div className={`h-4 ${skeletonBg} rounded w-3/4 mb-4`}></div>
                       <div className={`h-3 ${skeletonBg} rounded w-1/2 mb-6`}></div>

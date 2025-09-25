@@ -219,7 +219,11 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
     // Vista previa de PDFs
     if (mimeType === 'application/pdf') {
       return (
-        <div className="w-full h-96">
+        <div className={`w-full ${
+          isFullscreen 
+            ? 'h-[calc(100vh-200px)]' // Altura completa menos espacio para header y padding
+            : 'h-96' // Altura fija para modo normal
+        }`}>
           <iframe
             src={`${downloadUrl}#toolbar=0`}
             className={`w-full h-full border ${border} rounded-lg`}

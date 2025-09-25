@@ -270,12 +270,12 @@ const AnnouncementModal: React.FC<AnnouncementModalProps> = ({
                     <h4 className={`text-sm font-medium ${text} mb-2`}>Acciones Rápidas</h4>
                     <div className="space-y-2">
                       <Button
-                        onClick={() => copyToClipboard(announcement.title)}
+                        onClick={() => copyToClipboard(announcement.content)}
                         variant="outlined"
                         className="w-full justify-start px-3 py-2 text-sm"
                       >
                         <Copy size={14} className="mr-2" />
-                        Copiar título
+                        Copiar contenido
                       </Button>
                     </div>
                   </div>

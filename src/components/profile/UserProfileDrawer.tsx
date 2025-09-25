@@ -176,14 +176,6 @@ const UserProfileDrawer: React.FC<UserProfileDrawerProps> = ({ isOpen, onClose, 
                 </span>
               </div>
               
-              {user.uf_vendida !== undefined && (
-                <div className={`flex justify-between items-center py-3 border-b ${border}`}>
-                  <span className={`${textSecondary} text-sm font-medium`}>UF Vendida:</span>
-                  <span className={`${text} font-semibold text-sm text-right`}>
-                    {user.uf_vendida}
-                  </span>
-                </div>
-              )}
             </div>
           </div>
 

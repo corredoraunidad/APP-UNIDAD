@@ -179,9 +179,9 @@ const UserTable: React.FC<UserTableProps> = ({
         <div className={`grid grid-cols-12 gap-4 text-xs font-semibold ${textSecondary} uppercase tracking-wider`}>
           <div className="col-span-4 lg:col-span-3">Nombre</div>
           <div className="hidden lg:block col-span-3">Email</div>
-          <div className="col-span-2 lg:col-span-2">Rol</div>
-          <div className="col-span-2 lg:col-span-2 text-center">Estado</div>
-          <div className="col-span-2 lg:col-span-2 text-center">Acciones</div>
+          <div className="col-span-4 lg:col-span-2">Rol</div>
+          <div className="hidden lg:block col-span-2 text-center">Estado</div>
+          <div className="col-span-4 lg:col-span-2 text-center">Acciones</div>
         </div>
       </div>
 
@@ -214,14 +214,14 @@ const UserTable: React.FC<UserTableProps> = ({
               </div>
 
               {/* Rol */}
-              <div className="col-span-2 lg:col-span-2">
+              <div className="col-span-4 lg:col-span-2">
                 <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
                   {getRolDisplayName(user.rol)}
                 </span>
               </div>
 
               {/* Estado */}
-              <div className="col-span-2 lg:col-span-2 flex justify-center">
+              <div className="hidden lg:flex col-span-2 justify-center">
                 <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
                   user.is_active 
                     ? 'bg-green-100 text-green-800' 
@@ -232,7 +232,7 @@ const UserTable: React.FC<UserTableProps> = ({
               </div>
 
               {/* Acciones */}
-              <div className="col-span-2 lg:col-span-2 flex justify-center">
+              <div className="col-span-4 lg:col-span-2 flex justify-center">
                 <div className="relative">
                   {/* Menú de acciones - ANTES del botón para dropdowns hacia abajo */}
                   {openMenuId === user.id && !shouldMenuAppearAbove(index) && (

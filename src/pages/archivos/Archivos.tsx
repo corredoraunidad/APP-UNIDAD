@@ -389,38 +389,43 @@ const Archivos: React.FC = () => {
         />
 
         {/* Contenido principal */}
-        <div className="flex-1 overflow-auto">
-          <main className="p-6 pt-24">
-            <div className="max-w-7xl mx-auto">
-              {/* Header con botones */}
-              <FilesHeader
-                onCreateFolder={handleCreateFolder}
-                onUploadFile={handleUploadFile}
-                canCreate={can('archivos', 'create')}
-                canUpload={can('archivos', 'upload')}
-              />
+        <div className="flex-1 overflow-hidden">
+          <main className="h-full">
+            <div className="max-w-7xl mx-auto h-full flex flex-col">
+              {/* Header fijo */}
+              <div className="p-6 pt-24 pb-0 flex-shrink-0">
+                {/* Header con botones */}
+                <FilesHeader
+                  onCreateFolder={handleCreateFolder}
+                  onUploadFile={handleUploadFile}
+                  canCreate={can('archivos', 'create')}
+                  canUpload={can('archivos', 'upload')}
+                />
 
-              {/* Breadcrumb de navegación */}
-              <FilesBreadcrumb
-                currentPath={currentPath}
-                onNavigate={handleNavigateToPath}
-              />
+                {/* Breadcrumb de navegación */}
+                <FilesBreadcrumb
+                  currentPath={currentPath}
+                  onNavigate={handleNavigateToPath}
+                />
+              </div>
 
-              {/* Lista de archivos y carpetas */}
-              <FilesList
-                files={files}
-                folders={folders}
-                onItemOpen={handleItemOpen}
-                onItemDownload={handleItemDownload}
-                onItemRename={handleItemRename}
-                onItemDelete={handleItemDelete}
-                onItemPreview={handleItemPreview}
-                onItemManagePermissions={handleItemManagePermissions}
-                loading={loading}
-                canEdit={can('archivos', 'edit')}
-                canDelete={can('archivos', 'delete')}
-                canDownload={can('archivos', 'download')}
-              />
+              {/* Lista de archivos y carpetas - scrolleable */}
+              <div className="flex-1 overflow-auto px-6 pb-6">
+                <FilesList
+                  files={files}
+                  folders={folders}
+                  onItemOpen={handleItemOpen}
+                  onItemDownload={handleItemDownload}
+                  onItemRename={handleItemRename}
+                  onItemDelete={handleItemDelete}
+                  onItemPreview={handleItemPreview}
+                  onItemManagePermissions={handleItemManagePermissions}
+                  loading={loading}
+                  canEdit={can('archivos', 'edit')}
+                  canDelete={can('archivos', 'delete')}
+                  canDownload={can('archivos', 'download')}
+                />
+              </div>
             </div>
           </main>
         </div>

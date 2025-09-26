@@ -73,7 +73,7 @@ const CompanyModal: React.FC<CompanyModalProps> = ({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="fixed inset-0 z-[80] flex items-center justify-center">
         {/* Overlay */}
         <div
           className="absolute inset-0 transition-opacity"
@@ -427,7 +427,7 @@ const CompanyModal: React.FC<CompanyModalProps> = ({
                           {contact.email && (
                             <div className="flex items-center">
                               <Mail className="w-4 h-4 text-gray-500 mr-2" />
-                              <span className={`text-sm ${textSecondary}`}>{contact.email}</span>
+                              <span className={`text-sm ${textSecondary} break-all`}>{contact.email}</span>
                             </div>
                           )}
                         </div>

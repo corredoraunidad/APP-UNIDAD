@@ -174,6 +174,7 @@ const MetodosPago: React.FC = () => {
         showUserIcon={true}
         showLogout={false}
         onUserIconClick={openProfileDrawer}
+        isSidebarOpen={sidebarOpen}
       />
 
       {/* Layout con Sidebar y contenido */}

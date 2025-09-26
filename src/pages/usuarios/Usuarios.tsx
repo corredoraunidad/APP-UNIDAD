@@ -177,6 +177,7 @@ const Usuarios: React.FC = () => {
         showUserIcon={true}
         showLogout={false}
         onUserIconClick={openProfileDrawer}
+        isSidebarOpen={sidebarOpen}
       />
 
       {/* Layout con Sidebar y contenido */}
@@ -188,8 +189,8 @@ const Usuarios: React.FC = () => {
         />
 
         {/* Contenido principal */}
-        <div className="flex-1 overflow-hidden">
-          <main className="p-6 pt-24">
+        <div className="flex-1 overflow-auto">
+          <main className="p-6 pt-24 h-full">
             <div className="max-w-7xl mx-auto h-full flex flex-col">
               {/* Header con búsqueda y filtros */}
               <UserListHeader
@@ -202,7 +203,7 @@ const Usuarios: React.FC = () => {
               <div className="mb-6"></div>
               
               {/* Tabla de usuarios */}
-              <div className="flex-1 overflow-hidden">
+              <div className="flex-1">
                 <UserTable
                   key={refreshTable}
                   onEditUser={handleEditUser}

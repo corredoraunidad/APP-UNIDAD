@@ -110,14 +110,14 @@ export class FilePermissionService {
         .single();
 
       if (error || !data) {
-        // Si no hay permisos específicos, usar por defecto (solo admins pueden descargar)
-        return ['admin', 'admin_comercial', 'admin_operaciones'].includes(role);
+        // Si no hay permisos específicos, usar por defecto (TODOS pueden descargar)
+        return true;
       }
 
       return data.can_download;
     } catch (error) {
-      // En caso de error, usar por defecto
-      return ['admin', 'admin_comercial', 'admin_operaciones'].includes(role);
+      // En caso de error, usar por defecto (TODOS pueden descargar)
+      return true;
     }
   }
 
@@ -214,7 +214,7 @@ export class FilePermissionService {
         { role: 'admin', can_download: true },
         { role: 'admin_comercial', can_download: true },
         { role: 'admin_operaciones', can_download: true },
-        { role: 'broker', can_download: false }
+        { role: 'broker', can_download: true }
       ];
 
       return await this.updateFilePermissions(fileId, defaultPermissions, grantedBy);

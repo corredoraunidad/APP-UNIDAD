@@ -255,7 +255,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-60 flex items-center justify-center">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center">
       {/* Overlay */}
       <div 
         className="absolute inset-0 transition-opacity"
@@ -271,7 +271,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
       } transform transition-all overflow-hidden modal-content`}>
         {/* Header */}
         <div className={`flex items-center justify-between p-6 border-b ${border}`}>
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-3 flex-1 min-w-0">
             <div className={`p-2 ${bgSurface} rounded-lg`}>
               {getFileIcon()}
             </div>
@@ -284,7 +284,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
               </p>
             </div>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 flex-shrink-0">
             {/* Botones de acción - solo visibles en desktop */}
             <div className="hidden lg:flex items-center space-x-2">
               {downloadUrl && (

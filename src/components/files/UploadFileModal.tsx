@@ -27,7 +27,7 @@ const UploadFileModal: React.FC<UploadFileModalProps> = ({
     admin: true,
     admin_comercial: true,
     admin_operaciones: true,
-    broker: false
+    broker: true
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { modalBg, text, textSecondary, textMuted, border, bgSurface } = useThemeClasses();
@@ -164,7 +164,7 @@ const UploadFileModal: React.FC<UploadFileModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center">
       {/* Overlay */}
       <div 
         className="absolute inset-0 transition-opacity"

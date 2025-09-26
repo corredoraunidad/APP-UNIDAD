@@ -17,13 +17,14 @@ body {
   padding: 0;
 }
 
-/* Fix específico para Chrome - normalizar escalado */
+/* Fix específico para Chrome - normalizar escalado (DESHABILITADO: rompe position: fixed en iOS)
 @media screen and (-webkit-min-device-pixel-ratio: 0) {
   * {
     -webkit-transform: translateZ(0);
     transform: translateZ(0);
   }
 }
+*/
 
 /* Asegurar que los modales y drawers se comporten correctamente */
 .modal-content, .drawer-content {

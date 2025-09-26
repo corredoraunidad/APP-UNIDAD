@@ -45,7 +45,7 @@ const TopNav = ({
 
   return (
     <>
-      <header className={`${bgTopNav} ${shadow} border-b ${border} fixed top-0 left-0 right-0 z-50`}>
+      <header className={`${bgTopNav} ${shadow} border-b ${border} fixed top-0 left-0 right-0 z-[60]`}>
         <div className="w-full px-6">
           {/* Layout móvil: Grid de 3 columnas con logo centrado */}
           <div className="grid grid-cols-3 items-center py-4 lg:hidden">

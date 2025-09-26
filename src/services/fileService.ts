@@ -397,6 +397,14 @@ export class FileService {
           storage_path: updatedFile.storage_path,
         };
 
+        // Aplicar permisos por defecto automáticamente
+        try {
+          await FilePermissionService.resetToDefaultPermissions(updatedFile.id, user.id);
+        } catch (permError) {
+          // Log el error pero no fallar la subida
+          console.warn('Error aplicando permisos por defecto:', permError);
+        }
+
         return { data: fileItem, error: null };
       }
 
@@ -448,6 +456,14 @@ export class FileService {
         mime_type: newFile.mime_type,
         storage_path: newFile.storage_path,
       };
+
+      // Aplicar permisos por defecto automáticamente
+      try {
+        await FilePermissionService.resetToDefaultPermissions(newFile.id, user.id);
+      } catch (permError) {
+        // Log el error pero no fallar la subida
+        console.warn('Error aplicando permisos por defecto:', permError);
+      }
 
       return { data: fileItem, error: null };
     } catch (error: any) {

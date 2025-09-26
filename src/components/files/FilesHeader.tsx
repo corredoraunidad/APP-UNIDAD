@@ -22,7 +22,7 @@ const FilesHeader: React.FC<FilesHeaderProps> = ({
   
   return (
     <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start mb-8 gap-4">
-      <div>
+      <div className="hidden lg:block">
         <div className="flex items-center mb-2">
           <h1 className={`text-2xl font-bold ${text}`}>
             {moduleTexts.title}
@@ -33,16 +33,16 @@ const FilesHeader: React.FC<FilesHeaderProps> = ({
         </p>
       </div>
       
-      <div className="flex flex-col sm:flex-row gap-3 flex-shrink-0">
+      <div className="flex flex-row gap-2 sm:gap-3 flex-shrink-0">
         {canCreate && (
           <Button 
             variant="outlined" 
             color="primary" 
-            size="lg"
+            size="sm"
             onClick={onCreateFolder}
-            className="w-full sm:w-auto px-6 py-3"
+            className="flex-1 sm:flex-none sm:w-auto sm:px-4 sm:py-2 sm:text-base lg:px-5 lg:py-2.5 lg:text-base"
           >
-            <FolderPlus size={18} className="mr-2" />
+            <FolderPlus className="mr-2 w-4 h-4 lg:w-5 lg:h-5" />
             Nueva Carpeta
           </Button>
         )}
@@ -50,11 +50,11 @@ const FilesHeader: React.FC<FilesHeaderProps> = ({
           <Button 
             variant="contained" 
             color="primary" 
-            size="lg"
+            size="sm"
             onClick={onUploadFile}
-            className="w-full sm:w-auto px-6 py-3"
+            className="flex-1 sm:flex-none sm:w-auto sm:px-4 sm:py-2 sm:text-base lg:px-5 lg:py-2.5 lg:text-base"
           >
-            <Upload size={18} className="mr-2" />
+            <Upload className="mr-2 w-4 h-4 lg:w-5 lg:h-5" />
             Subir Archivo
           </Button>
         )}

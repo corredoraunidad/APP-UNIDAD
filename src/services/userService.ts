@@ -54,14 +54,24 @@ export class UserService {
         fecha_desde,
         fecha_hasta,
         search,
+        estado,
+        orden = 'alfabetico',
+        direccion_orden = 'asc',
         page = 1,
         limit = 10
       } = filters;
 
       let query = supabase
         .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .select('*');
+
+      // Aplicar ordenamiento
+      if (orden === 'alfabetico') {
+        query = query.order('nombres', { ascending: direccion_orden === 'asc' });
+        query = query.order('apellido_paterno', { ascending: direccion_orden === 'asc' });
+      } else {
+        query = query.order('created_at', { ascending: direccion_orden === 'asc' });
+      }
 
       // Aplicar filtros
       if (rol) {
@@ -69,6 +79,9 @@ export class UserService {
       }
       if (region) {
         query = query.eq('region', region);
+      }
+      if (estado) {
+        query = query.eq('is_active', estado === 'activo');
       }
       if (fecha_desde) {
         query = query.gte('fecha_registro', fecha_desde);
@@ -80,10 +93,32 @@ export class UserService {
         query = query.or(`nombres.ilike.%${search}%,apellido_paterno.ilike.%${search}%,apellido_materno.ilike.%${search}%,email.ilike.%${search}%,username.ilike.%${search}%,rut.ilike.%${search}%`);
       }
 
-      // Primero obtener el total de registros para la paginación
-      const { count: totalCount } = await supabase
+      // Primero obtener el total de registros para la paginación (aplicando los mismos filtros)
+      let countQuery = supabase
         .from('profiles')
         .select('*', { count: 'exact', head: true });
+
+      // Aplicar los mismos filtros al conteo
+      if (rol) {
+        countQuery = countQuery.eq('rol', rol);
+      }
+      if (region) {
+        countQuery = countQuery.eq('region', region);
+      }
+      if (estado) {
+        countQuery = countQuery.eq('is_active', estado === 'activo');
+      }
+      if (fecha_desde) {
+        countQuery = countQuery.gte('fecha_registro', fecha_desde);
+      }
+      if (fecha_hasta) {
+        countQuery = countQuery.lte('fecha_registro', fecha_hasta);
+      }
+      if (search) {
+        countQuery = countQuery.or(`nombres.ilike.%${search}%,apellido_paterno.ilike.%${search}%,apellido_materno.ilike.%${search}%,email.ilike.%${search}%,username.ilike.%${search}%,rut.ilike.%${search}%`);
+      }
+
+      const { count: totalCount } = await countQuery;
 
       // Paginación
       const from = (page - 1) * limit;

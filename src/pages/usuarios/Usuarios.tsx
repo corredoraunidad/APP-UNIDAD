@@ -36,7 +36,9 @@ const Usuarios: React.FC = () => {
   // Estados para filtros y búsqueda
   const [filters, setFilters] = useState<UserFilters>({
     page: 1,
-    limit: 5
+    limit: 5,
+    orden: 'alfabetico',
+    direccion_orden: 'asc'
   });
   
 

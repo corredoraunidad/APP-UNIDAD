@@ -88,4 +88,7 @@ export interface UserFilters {
   search?: string;
   page?: number;
   limit?: number;
+  estado?: 'activo' | 'inactivo';
+  orden?: 'alfabetico' | 'fecha_registro';
+  direccion_orden?: 'asc' | 'desc';
 }

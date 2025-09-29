@@ -62,7 +62,9 @@ const UserListHeader: React.FC<UserListHeaderProps> = ({
   const handleClearFilters = () => {
     onFiltersChange({
       page: 1,
-      limit: 5
+      limit: 5,
+      orden: 'alfabetico',
+      direccion_orden: 'asc'
     });
   };
 
@@ -107,53 +109,110 @@ const UserListHeader: React.FC<UserListHeaderProps> = ({
       {/* Filtros expandibles */}
       {showFilters && (
         <div className="mt-4 pt-4">
-          <div className="flex flex-col sm:flex-row gap-4 items-end">
-            {/* Rol */}
-            <div className="flex-1">
-              <label className={`block text-sm font-medium ${textSecondary} mb-1`}>
-                Rol
-              </label>
-              <select
-                className={`w-full px-3 py-2 ${inputBg} ${inputText} border ${inputBorder} rounded-lg focus:ring-2 focus:ring-[#fd8412] focus:border-transparent`}
-                onChange={(e) => handleFilterChange('rol', e.target.value || undefined)}
-                value={filters.rol || ''}
-              >
-                <option value="">Todos los roles</option>
-                <option value="admin">Administrador</option>
-                <option value="admin_comercial">Admin Comercial</option>
-                <option value="admin_operaciones">Admin Operaciones</option>
-                <option value="broker">Corredor</option>
-              </select>
+          <div className="flex flex-col gap-4">
+            {/* Primera fila: Rol, Región, Estado */}
+            <div className="flex flex-col sm:flex-row gap-4 items-end">
+              {/* Rol */}
+              <div className="flex-1">
+                <label className={`block text-sm font-medium ${textSecondary} mb-1`}>
+                  Rol
+                </label>
+                <select
+                  className={`w-full px-3 py-2 ${inputBg} ${inputText} border ${inputBorder} rounded-lg focus:ring-2 focus:ring-[#fd8412] focus:border-transparent`}
+                  onChange={(e) => handleFilterChange('rol', e.target.value || undefined)}
+                  value={filters.rol || ''}
+                >
+                  <option value="">Todos los roles</option>
+                  <option value="admin">Administrador</option>
+                  <option value="admin_comercial">Admin Comercial</option>
+                  <option value="admin_operaciones">Admin Operaciones</option>
+                  <option value="broker">Corredor</option>
+                </select>
+              </div>
+
+              {/* Región */}
+              <div className="flex-1">
+                <label className={`block text-sm font-medium ${textSecondary} mb-1`}>
+                  Región
+                </label>
+                <select
+                  className={`w-full px-3 py-2 ${inputBg} ${inputText} border ${inputBorder} rounded-lg focus:ring-2 focus:ring-[#fd8412] focus:border-transparent`}
+                  onChange={(e) => handleFilterChange('region', e.target.value ? parseInt(e.target.value) : undefined)}
+                  value={filters.region?.toString() || ''}
+                >
+                  <option value="">Todas las regiones</option>
+                  {REGIONES_CHILE.map(region => (
+                    <option key={region.id} value={region.id}>
+                      {region.id === 7 ? 'RM' : region.id} - {region.nombre}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Estado */}
+              <div className="flex-1">
+                <label className={`block text-sm font-medium ${textSecondary} mb-1`}>
+                  Estado
+                </label>
+                <select
+                  className={`w-full px-3 py-2 ${inputBg} ${inputText} border ${inputBorder} rounded-lg focus:ring-2 focus:ring-[#fd8412] focus:border-transparent`}
+                  onChange={(e) => handleFilterChange('estado', e.target.value || undefined)}
+                  value={filters.estado || ''}
+                >
+                  <option value="">Todos los estados</option>
+                  <option value="activo">Activos</option>
+                  <option value="inactivo">Inactivos</option>
+                </select>
+              </div>
             </div>
 
-            {/* Región */}
-            <div className="flex-1">
-              <label className={`block text-sm font-medium ${textSecondary} mb-1`}>
-                Región
-              </label>
-              <select
-                className={`w-full px-3 py-2 ${inputBg} ${inputText} border ${inputBorder} rounded-lg focus:ring-2 focus:ring-[#fd8412] focus:border-transparent`}
-                onChange={(e) => handleFilterChange('region', e.target.value ? parseInt(e.target.value) : undefined)}
-                value={filters.region?.toString() || ''}
-              >
-                <option value="">Todas las regiones</option>
-                {REGIONES_CHILE.map(region => (
-                  <option key={region.id} value={region.id}>
-                    {region.id === 7 ? 'RM' : region.id} - {region.nombre}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {/* Segunda fila: Ordenamiento y botón limpiar */}
+            <div className="flex flex-col sm:flex-row gap-4 items-end">
+              {/* Ordenamiento */}
+              <div className="flex-1">
+                <label className={`block text-sm font-medium ${textSecondary} mb-1`}>
+                  Ordenar por
+                </label>
+                <select
+                  className={`w-full px-3 py-2 ${inputBg} ${inputText} border ${inputBorder} rounded-lg focus:ring-2 focus:ring-[#fd8412] focus:border-transparent`}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === 'alfabetico_asc') {
+                      handleFilterChange('orden', 'alfabetico');
+                      handleFilterChange('direccion_orden', 'asc');
+                    } else if (value === 'alfabetico_desc') {
+                      handleFilterChange('orden', 'alfabetico');
+                      handleFilterChange('direccion_orden', 'desc');
+                    } else if (value === 'fecha_asc') {
+                      handleFilterChange('orden', 'fecha_registro');
+                      handleFilterChange('direccion_orden', 'asc');
+                    } else if (value === 'fecha_desc') {
+                      handleFilterChange('orden', 'fecha_registro');
+                      handleFilterChange('direccion_orden', 'desc');
+                    }
+                  }}
+                  value={`${filters.orden || 'alfabetico'}_${filters.direccion_orden || 'asc'}`}
+                >
+                  <option value="alfabetico_asc">Alfabético (A-Z)</option>
+                  <option value="alfabetico_desc">Alfabético (Z-A)</option>
+                  <option value="fecha_desc">Más recientes</option>
+                  <option value="fecha_asc">Más antiguos</option>
+                </select>
+              </div>
 
-            {/* Limpiar filtros */}
-            <div>
-              <Button
-                onClick={handleClearFilters}
-                variant="outlined"
-                className="text-sm"
-              >
-                Limpiar Filtros
-              </Button>
+              {/* Espacio para mantener alineación */}
+              <div className="flex-1"></div>
+
+              {/* Limpiar filtros */}
+              <div>
+                <Button
+                  onClick={handleClearFilters}
+                  variant="outlined"
+                  className="text-sm"
+                >
+                  Limpiar Filtros
+                </Button>
+              </div>
             </div>
           </div>
         </div>

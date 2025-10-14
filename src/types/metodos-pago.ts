@@ -34,7 +34,7 @@ export interface PaymentMethod {
   updated_by?: string;
 
   // Adjuntos (IDs de tabla files)
-  paymetmethodaAttachments?: string[];
+  payment_method_attachments?: string[];
 }
 
 export interface PaymentMethodFormData {
@@ -48,5 +48,5 @@ export interface PaymentMethodFormData {
   usd_account_number?: string;
   usd_bank_name?: string;
   // Adjuntos a enviar al crear
-  paymetmethodaAttachments?: string[];
+  payment_method_attachments?: string[];
 }

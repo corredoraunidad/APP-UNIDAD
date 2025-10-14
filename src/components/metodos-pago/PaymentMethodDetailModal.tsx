@@ -333,7 +333,7 @@ Número de Cuenta: ${paymentMethod.account_number}${paymentMethod.contact_email 
                 <EntityAttachments
                   entityId={paymentMethod.id}
                   entityName={paymentMethod.company_name}
-                  attachmentIds={paymentMethod.paymetmethodaAttachments || []}
+                  attachmentIds={paymentMethod.payment_method_attachments || []}
                   basePath="/instructivos-metodos-pago"
                   canEdit={can('metodos_pago', 'edit')}
                   onPersist={async (id, ids) => {
@@ -341,7 +341,7 @@ Número de Cuenta: ${paymentMethod.account_number}${paymentMethod.contact_email 
                     return { error: res.error || null };
                   }}
                   onAttachmentsChange={(ids) => {
-                    (paymentMethod as any).paymetmethodaAttachments = ids;
+                    (paymentMethod as any).payment_method_attachments = ids;
                   }}
                   onPreviewFile={(file) => {
                     setPreviewFile({ id: file.id, name: file.name, type: file.mime_type || 'application/pdf', size: file.size || 0 });

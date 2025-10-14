@@ -41,7 +41,7 @@ const PaymentMethodFormModal: React.FC<PaymentMethodFormModalProps> = ({
     contact_email: '',
     usd_account_number: '',
     usd_bank_name: '',
-    paymetmethodaAttachments: []
+    payment_method_attachments: []
   });
 
   const [loading, setLoading] = useState(false);
@@ -75,7 +75,7 @@ const PaymentMethodFormModal: React.FC<PaymentMethodFormModalProps> = ({
           contact_email: paymentMethod.contact_email || '',
           usd_account_number: paymentMethod.usd_account_number || '',
           usd_bank_name: paymentMethod.usd_bank_name || '',
-          paymetmethodaAttachments: paymentMethod.paymetmethodaAttachments || []
+          payment_method_attachments: paymentMethod.payment_method_attachments || []
         });
       } else {
         // Modo creación
@@ -89,7 +89,7 @@ const PaymentMethodFormModal: React.FC<PaymentMethodFormModalProps> = ({
           contact_email: '',
           usd_account_number: '',
           usd_bank_name: '',
-          paymetmethodaAttachments: []
+          payment_method_attachments: []
         });
       }
       setError(null);
@@ -435,7 +435,7 @@ const PaymentMethodFormModal: React.FC<PaymentMethodFormModalProps> = ({
                 <EntityAttachments
                   entityId={paymentMethod.id}
                   entityName={paymentMethod.company_name}
-                  attachmentIds={paymentMethod.paymetmethodaAttachments || []}
+                  attachmentIds={paymentMethod.payment_method_attachments || []}
                   basePath="/instructivos-metodos-pago"
                   canEdit={can('metodos_pago', 'edit')}
                   onPersist={async (id, ids) => {
@@ -445,7 +445,7 @@ const PaymentMethodFormModal: React.FC<PaymentMethodFormModalProps> = ({
                   onAttachmentsChange={(ids) => {
                     if (!paymentMethod) return;
                     // Refrescar el objeto en memoria para re-renderizar
-                    (paymentMethod as any).paymetmethodaAttachments = ids;
+                    (paymentMethod as any).payment_method_attachments = ids;
                   }}
                   onPreviewFile={(file) => {
                     setPreviewFile({ id: file.id, name: file.name, type: file.mime_type || 'application/pdf', size: file.size || 0 });
@@ -456,16 +456,16 @@ const PaymentMethodFormModal: React.FC<PaymentMethodFormModalProps> = ({
                 <EntityAttachments
                   entityId={formData.company_name || 'nuevo'}
                   entityName={formData.company_name || 'nuevo'}
-                  attachmentIds={formData.paymetmethodaAttachments || []}
+                  attachmentIds={formData.payment_method_attachments || []}
                   basePath="/instructivos-metodos-pago"
                   canEdit={can('metodos_pago', 'edit')}
                   onPersist={async (_id, ids) => {
                     // En creación: mantener los IDs en el formulario. Se guardan en create()
-                    setFormData(prev => ({ ...prev, paymetmethodaAttachments: ids }));
+                    setFormData(prev => ({ ...prev, payment_method_attachments: ids }));
                     return { error: null };
                   }}
                   onAttachmentsChange={(ids) => {
-                    setFormData(prev => ({ ...prev, paymetmethodaAttachments: ids }));
+                    setFormData(prev => ({ ...prev, payment_method_attachments: ids }));
                   }}
                   onPreviewFile={(file) => {
                     setPreviewFile({ id: file.id, name: file.name, type: file.mime_type || 'application/pdf', size: file.size || 0 });

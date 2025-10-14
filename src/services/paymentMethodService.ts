@@ -21,7 +21,7 @@ export class PaymentMethodsService {
 
       const mapped: PaymentMethod[] = (data || []).map((pm: any) => ({
         ...pm,
-        paymetmethodaAttachments: pm.paymetmethoda_attachments || []
+        payment_method_attachments: pm.payment_method_attachments || []
       }));
       return { paymentMethods: mapped };
     } catch (error: any) {
@@ -48,7 +48,7 @@ export class PaymentMethodsService {
 
       const mapped: PaymentMethod = {
         ...data,
-        paymetmethodaAttachments: data.paymetmethoda_attachments || []
+        payment_method_attachments: data.payment_method_attachments || []
       };
       return { paymentMethod: mapped };
     } catch (error: any) {
@@ -67,8 +67,16 @@ export class PaymentMethodsService {
       const { data: result, error } = await supabase
         .from('payment_methods')
         .insert([{
-          ...data,
-          paymetmethoda_attachments: data.paymetmethodaAttachments || [],
+          company_name: data.company_name,
+          company_rut: data.company_rut,
+          payment_links: data.payment_links,
+          bank_name: data.bank_name,
+          account_type: data.account_type,
+          account_number: data.account_number,
+          contact_email: data.contact_email,
+          usd_account_number: data.usd_account_number,
+          usd_bank_name: data.usd_bank_name,
+          payment_method_attachments: data.payment_method_attachments || [],
           is_active: true, // Establecer como activo por defecto
           created_by: user?.user?.id,
           updated_by: user?.user?.id
@@ -83,7 +91,7 @@ export class PaymentMethodsService {
 
       const mapped: PaymentMethod = {
         ...result,
-        paymetmethodaAttachments: result.paymetmethoda_attachments || []
+        payment_method_attachments: result.payment_method_attachments || []
       };
       return { paymentMethod: mapped };
     } catch (error: any) {
@@ -127,7 +135,7 @@ export class PaymentMethodsService {
     try {
       const { error } = await supabase
         .from('payment_methods')
-        .update({ paymetmethoda_attachments: attachmentIds })
+        .update({ payment_method_attachments: attachmentIds })
         .eq('id', id);
 
       if (error) {

@@ -10,6 +10,9 @@ export * from './users';
 // Nuevos tipos de navegación
 export * from './navigation';
 
+// Tipos de búsqueda global
+export * from './search';
+
 // Tipos de UI
 export interface ButtonProps {
   children: React.ReactNode;

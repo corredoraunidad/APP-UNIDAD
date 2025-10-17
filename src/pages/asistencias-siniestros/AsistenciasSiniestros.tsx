@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import TopNav from '../../components/navigation/TopNav';
 import { useThemeClasses } from '../../hooks/useThemeClasses';
@@ -20,6 +20,7 @@ import type { Company, CreateCompanyRequest, UpdateCompanyRequest } from '../../
 
 const AsistenciasSiniestros: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { can } = usePermissions();
   const { bg, text, textSecondary } = useThemeClasses();
   const moduleTexts = useModuleTexts('asistencias_siniestros');
@@ -58,6 +59,33 @@ const AsistenciasSiniestros: React.FC = () => {
   useEffect(() => {
     loadCompanies();
   }, []);
+
+  // Abrir modal de compañía automáticamente si viene companyId en query param
+  useEffect(() => {
+    const companyIdParam = searchParams.get('companyId');
+    if (companyIdParam && companies.length > 0) {
+      // Buscar la compañía en la lista cargada
+      const company = companies.find(c => c.id === companyIdParam);
+      if (company) {
+        setSelectedCompany(company);
+        setIsModalOpen(true);
+      } else {
+        // Si no está en la lista, cargarla directamente del servicio
+        const loadCompany = async () => {
+          try {
+            const { company: fetchedCompany, error } = await AsistenciasSiniestrosService.getCompanyById(companyIdParam);
+            if (fetchedCompany && !error) {
+              setSelectedCompany(fetchedCompany);
+              setIsModalOpen(true);
+            }
+          } catch (err) {
+            console.error('Error al cargar compañía:', err);
+          }
+        };
+        loadCompany();
+      }
+    }
+  }, [companies, searchParams]); // Ejecutar cuando cambien las compañías cargadas
 
   const loadCompanies = async () => {
     try {
@@ -155,6 +183,11 @@ const AsistenciasSiniestros: React.FC = () => {
       }
     }
     setSelectedCompany(null);
+    
+    // Limpiar query params para evitar que se reabra el modal
+    if (searchParams.has('companyId')) {
+      navigate('/asistencias-siniestros', { replace: true });
+    }
   };
 
   const handleEditCompany = (company: Company) => {

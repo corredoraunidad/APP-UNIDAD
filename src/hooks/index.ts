@@ -15,3 +15,6 @@ export { useTheme } from './useTheme';
 export { useThemeClasses } from './useThemeClasses';
 export { useUserCreationModal } from './useUserCreationModal';
 export { useUserProfileDrawer } from './useUserProfileDrawer';
+
+// Hook de búsqueda global
+export { useGlobalSearch } from './useGlobalSearch';

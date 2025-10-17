@@ -12,11 +12,12 @@ import { useUserProfileDrawer } from '../../hooks/useUserProfileDrawer';
 import { useUserCreationModal } from '../../hooks/useUserCreationModal';
 import { UserService } from '../../services/userService';
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import type { User, CreateUserData, UserWithContract, UserFilters } from '../../types';
 
 const Usuarios: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { bg} = useThemeClasses();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
@@ -57,6 +58,29 @@ const Usuarios: React.FC = () => {
     window.addEventListener('resize', checkScreenSize);
     return () => window.removeEventListener('resize', checkScreenSize);
   }, []);
+
+  // Leer query param 'userId' al montar para navegación directa desde búsqueda
+  useEffect(() => {
+    const userIdParam = searchParams.get('userId');
+    if (userIdParam) {
+      // Cargar el usuario y abrir modal automáticamente
+      const loadAndShowUser = async () => {
+        try {
+          const { user, error } = await UserService.getUserById(userIdParam);
+          if (user && !error) {
+            setSelectedUser(user);
+            setIsDetailModalOpen(true);
+          } else {
+            console.error('Error cargando usuario:', error);
+          }
+        } catch (err) {
+          console.error('Error al cargar usuario:', err);
+        }
+      };
+      
+      loadAndShowUser();
+    }
+  }, []); // Solo ejecutar al montar
 
   const handleLogout = () => {
     navigate('/login');
@@ -162,6 +186,11 @@ const Usuarios: React.FC = () => {
   const handleCloseDetailModal = () => {
     setIsDetailModalOpen(false);
     setSelectedUser(null);
+    
+    // Limpiar query params para evitar que se reabra el modal
+    if (searchParams.has('userId')) {
+      navigate('/usuarios', { replace: true });
+    }
   };
 
   const handleUserUpdated = (updatedUser: UserWithContract) => {

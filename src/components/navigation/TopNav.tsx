@@ -1,7 +1,9 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User } from 'lucide-react';
+import { User, Search } from 'lucide-react';
 import logoUnidad from '../../assets/LogoUnidad.png';
 import { useThemeClasses } from '../../hooks/useThemeClasses';
+import GlobalSearchModal from '../search/GlobalSearchModal';
 
 interface TopNavProps {
   onLogout?: () => void;
@@ -24,6 +26,23 @@ const TopNav = ({
 }: TopNavProps) => {
   const navigate = useNavigate();
   const { bgTopNav, shadow, border } = useThemeClasses();
+  
+  // Estado del modal de búsqueda
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+
+  // Manejar shortcut Ctrl/Cmd + K
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+K o Cmd+K para abrir búsqueda
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsSearchModalOpen(true);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const handleLogout = () => {
     if (onLogout) {
@@ -41,6 +60,14 @@ const TopNav = ({
       // Fallback: navegación por defecto (aunque ya no la usaremos)
       navigate('/profile');
     }
+  };
+
+  const openSearchModal = () => {
+    setIsSearchModalOpen(true);
+  };
+
+  const closeSearchModal = () => {
+    setIsSearchModalOpen(false);
   };
 
   return (
@@ -82,8 +109,26 @@ const TopNav = ({
               </div>
             </div>
 
-            {/* Icono de usuario - Lado derecho */}
-            <div className="flex justify-end">
+            {/* Botón de búsqueda e icono de usuario - Lado derecho */}
+            <div className="flex justify-end items-center gap-2">
+              {/* Botón de búsqueda (solo icono en móvil) */}
+              <button
+                onClick={openSearchModal}
+                className="p-2 text-white rounded-lg transition-all duration-200 ease-in-out"
+                style={{
+                  backgroundColor: 'transparent'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+                title="Buscar (Ctrl+K)"
+                aria-label="Buscar"
+              >
+                <Search className="w-6 h-6" />
+              </button>
               {showUserIcon && (
                 <button
                   onClick={handleUserIconClick}
@@ -116,7 +161,7 @@ const TopNav = ({
 
           {/* Layout desktop: Flex con logo a la izquierda (como antes) */}
           <div className="hidden lg:flex justify-between items-center py-4">
-            {/* Logo y botón de menú */}
+            {/* Logo */}
             <div className="flex items-center">
               <div className="h-20 w-auto">
                 <img 
@@ -127,8 +172,30 @@ const TopNav = ({
               </div>
             </div>
 
-            {/* Icono de usuario o botón de logout */}
-            <div className="flex items-center">
+            {/* Espacio flexible */}
+            <div className="flex-1"></div>
+
+            {/* Iconos de búsqueda y usuario */}
+            <div className="flex items-center gap-2">
+              {/* Botón de búsqueda */}
+              <button
+                onClick={openSearchModal}
+                className="p-2 text-white rounded-lg transition-all duration-200 ease-in-out"
+                style={{
+                  backgroundColor: 'transparent'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+                title="Buscar (Ctrl+K)"
+                aria-label="Buscar"
+              >
+                <Search className="w-6 h-6" />
+              </button>
+              
               {showUserIcon && (
                 <button
                   onClick={handleUserIconClick}
@@ -160,6 +227,12 @@ const TopNav = ({
           </div>
         </div>
       </header>
+
+      {/* Modal de búsqueda global */}
+      <GlobalSearchModal
+        isOpen={isSearchModalOpen}
+        onClose={closeSearchModal}
+      />
     </>
   );
 };

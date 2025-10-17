@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import TopNav from '../../components/navigation/TopNav';
 import { useThemeClasses } from '../../hooks/useThemeClasses';
@@ -19,6 +19,7 @@ import type { PaymentMethod, PaymentMethodFormData } from '../../types/metodos-p
 
 const MetodosPago: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { can } = usePermissions();
   const { bg, text, textSecondary } = useThemeClasses();
   const moduleTexts = useModuleTexts('metodos_pago');
@@ -64,6 +65,31 @@ const MetodosPago: React.FC = () => {
   useEffect(() => {
     loadPaymentMethods();
   }, []);
+
+  // Abrir modal de método de pago automáticamente si viene methodId en query param
+  useEffect(() => {
+    const methodIdParam = searchParams.get('methodId');
+    if (methodIdParam && paymentMethods.length > 0) {
+      // Buscar el método de pago en la lista cargada
+      const method = paymentMethods.find(m => m.id === methodIdParam);
+      if (method) {
+        setDetailModal({ isOpen: true, paymentMethod: method });
+      } else {
+        // Si no está en la lista, cargar directamente del servicio
+        const loadMethod = async () => {
+          try {
+            const { paymentMethod: fetchedMethod, error } = await PaymentMethodsService.getById(methodIdParam);
+            if (fetchedMethod && !error) {
+              setDetailModal({ isOpen: true, paymentMethod: fetchedMethod });
+            }
+          } catch (err) {
+            console.error('Error al cargar método de pago:', err);
+          }
+        };
+        loadMethod();
+      }
+    }
+  }, [paymentMethods, searchParams]); // Ejecutar cuando cambien los métodos cargados
 
   const loadPaymentMethods = async () => {
     try {
@@ -164,6 +190,15 @@ const MetodosPago: React.FC = () => {
     }
   };
 
+  const handleCloseDetailModal = () => {
+    setDetailModal({ isOpen: false, paymentMethod: null });
+    
+    // Limpiar query params para evitar que se reabra el modal
+    if (searchParams.has('methodId')) {
+      navigate('/metodos-pago', { replace: true });
+    }
+  };
+
   return (
     <div className={`h-screen overflow-hidden ${bg}`}>
       {/* TopNav */}
@@ -257,7 +292,7 @@ const MetodosPago: React.FC = () => {
       {/* Modales - Renderizados a nivel de página completa */}
       <PaymentMethodDetailModal
         isOpen={detailModal.isOpen}
-        onClose={() => setDetailModal({ isOpen: false, paymentMethod: null })}
+        onClose={handleCloseDetailModal}
         paymentMethod={detailModal.paymentMethod}
       />
 

@@ -17,12 +17,13 @@ import { usePermissions } from '../../hooks/usePermissions';
 import { FileService } from '../../services/fileService';
 import type { FolderItem, FileItem } from '../../types/files';
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 
 
 const Archivos: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { bg } = useThemeClasses();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
@@ -30,7 +31,11 @@ const Archivos: React.FC = () => {
   const { can } = usePermissions();
   
   // Estados para navegación de archivos
-  const [currentPath, setCurrentPath] = useState('/');
+  // Inicializar currentPath leyendo el query param directamente para evitar doble carga
+  const [currentPath, setCurrentPath] = useState(() => {
+    const pathParam = searchParams.get('path');
+    return pathParam ? decodeURIComponent(pathParam) : '/';
+  });
   const [loading, setLoading] = useState(false);
   const [folders, setFolders] = useState<FolderItem[]>([]);
   const [files, setFiles] = useState<FileItem[]>([]);
@@ -88,6 +93,24 @@ const Archivos: React.FC = () => {
       setLoading(false);
     }
   };
+
+  // Abrir modal de preview automáticamente si viene fileId en query param
+  useEffect(() => {
+    const fileIdParam = searchParams.get('fileId');
+    if (fileIdParam && files.length > 0) {
+      // Buscar el archivo en la lista cargada
+      const file = files.find(f => f.id === fileIdParam);
+      if (file) {
+        setPreviewFile({
+          id: file.id,
+          name: file.name,
+          mimeType: file.mime_type || '',
+          size: file.size
+        });
+        setIsPreviewModalOpen(true);
+      }
+    }
+  }, [files, searchParams]); // Ejecutar cuando cambien los archivos cargados
 
   // Cargar contenido cuando cambie el path
   useEffect(() => {
@@ -323,6 +346,22 @@ const Archivos: React.FC = () => {
     loadFolderContents(currentPath);
   };
 
+  const handleClosePreviewModal = () => {
+    setIsPreviewModalOpen(false);
+    setPreviewFile(null);
+    
+    // Limpiar query params para evitar que se reabra el modal
+    if (searchParams.has('fileId')) {
+      const currentPathParam = searchParams.get('path');
+      if (currentPathParam) {
+        // Mantener el path pero eliminar el fileId
+        navigate(`/archivos?path=${currentPathParam}`, { replace: true });
+      } else {
+        navigate('/archivos', { replace: true });
+      }
+    }
+  };
+
   // Handlers para modales de acciones
   const handleRenameSubmit = async (newName: string) => {
     if (!selectedItem) return;
@@ -482,10 +521,7 @@ const Archivos: React.FC = () => {
 
       <FilePreviewModal
         isOpen={isPreviewModalOpen}
-        onClose={() => {
-          setIsPreviewModalOpen(false);
-          setPreviewFile(null);
-        }}
+        onClose={handleClosePreviewModal}
         fileId={previewFile?.id || ''}
         fileName={previewFile?.name || ''}
         fileType={previewFile?.mimeType || ''}

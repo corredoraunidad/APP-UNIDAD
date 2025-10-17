@@ -223,12 +223,20 @@ export class GlobalSearchService {
   /**
    * Buscar contactos
    * Busca en: nombre, email, teléfono, cargo
+   * Solo visible para admins (brokers no tienen acceso a contactos adicionales)
    */
   static async searchContacts(
     query: string,
+    userRole: string,
     limit: number = 5
   ): Promise<SearchResultContact[]> {
     try {
+      // Verificar que el usuario NO sea broker (no tienen acceso a contactos adicionales)
+      const canViewContacts = !['broker'].includes(userRole);
+      if (!canViewContacts) {
+        return [];
+      }
+
       const { data, error } = await supabase
         .from('company_contacts')
         .select('id, company_id, name, position, email, phone, is_primary')
@@ -375,7 +383,7 @@ export class GlobalSearchService {
         this.searchUsers(trimmedQuery, userRole, limit),
         this.searchFiles(trimmedQuery, userId, userRole, limit),
         this.searchCompanies(trimmedQuery, limit),
-        this.searchContacts(trimmedQuery, limit),
+        this.searchContacts(trimmedQuery, userRole, limit),
         this.searchPaymentMethods(trimmedQuery, limit),
       ]);
 

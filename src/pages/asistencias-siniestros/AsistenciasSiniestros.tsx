@@ -176,6 +176,13 @@ const AsistenciasSiniestros: React.FC = () => {
 
   const handleCloseModal = async () => {
     setIsModalOpen(false);
+    
+    // Limpiar query params PRIMERO para evitar flash al actualizar companies
+    if (searchParams.has('companyId')) {
+      navigate('/asistencias-siniestros', { replace: true });
+    }
+    
+    // Luego refrescar datos (ya sin query param)
     if (selectedCompany) {
       const { company: refreshed, error } = await AsistenciasSiniestrosService.getCompanyById(selectedCompany.id);
       if (!error && refreshed) {
@@ -183,11 +190,6 @@ const AsistenciasSiniestros: React.FC = () => {
       }
     }
     setSelectedCompany(null);
-    
-    // Limpiar query params para evitar que se reabra el modal
-    if (searchParams.has('companyId')) {
-      navigate('/asistencias-siniestros', { replace: true });
-    }
   };
 
   const handleEditCompany = (company: Company) => {
